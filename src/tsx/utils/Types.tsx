@@ -31,6 +31,7 @@ export interface QuadTreeProps {
   center: Vec2;
   center_of_mass: Vec2;
   dimensions: Vec2;
+  theta: number;
   children: Array<QuadTreeProps>;
   planets: Array<PlanetProps>;
 }

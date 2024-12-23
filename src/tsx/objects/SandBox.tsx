@@ -105,6 +105,7 @@ export function changePlanets(event: ChangeEvent<HTMLInputElement>) {
   } else {
     for (let i = 0; i < c - w; i++) {
       universe.remove_planet();
+      if (universe.get_planet_count() < 500) info.qtv = false;
     }
   }
   universe.rebuild();

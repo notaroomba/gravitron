@@ -9,6 +9,7 @@ export default function BatchGraphics({
 }: BatchGraphicsProps) {
   const draw = useCallback(
     (g: G) => {
+      let index = 0;
       g.clear();
       //g.lineStyle(1);
       for (let i = 0; i < planets.length; i++) {
@@ -31,13 +32,14 @@ export default function BatchGraphics({
             qtt.dimensions.x,
             qtt.dimensions.y,
           );
-          if (qtt.children) {
+          index++;
+          if (qtt.children && index > 6/quadTree.theta) {
             for (let i = 0; i < qtt.children.length; i++) {
               drawQuadRect(qtt.children[i]);
             }
           }
         };
-        if (quadTree.children)
+        if (quadTree.children && index > 6/quadTree.theta)
           for (let i = 0; i < quadTree.children.length; i++) {
             drawQuadRect(quadTree.children[i]);
           }
