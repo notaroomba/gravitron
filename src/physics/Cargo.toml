@@ -1,7 +1,7 @@
 [package]
 name = "physics-engine"
-description = "A rust backend for my Pendulumania Simulation!"
-repository = "https://github.com/NotARoomba/DoublePendulum"
+description = "A rust backend for my Gravity Simulation!"
+repository = "https://github.com/NotARoomba/Gravitron"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"

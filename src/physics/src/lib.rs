@@ -2,139 +2,114 @@ use rand::Rng;
 use wasm_bindgen::prelude::*;
 use serde::{ Serialize, Deserialize };
 use core::ops;
-use std::{ f64::consts::PI, vec };
-use nalgebra::{ DMatrix, DVector, LU };
+use std::vec;
 // extern crate console_error_panic_hook;
 // use std::panic;
 
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, Clone, PartialEq, Copy, Default)]
-pub struct Vec2 {
+pub struct Vec3 {
     pub x: f64,
     pub y: f64,
+    pub z: f64,
 }
 #[wasm_bindgen]
-impl Vec2 {
+impl Vec3 {
     #[wasm_bindgen(constructor)]
-    pub fn new(x: f64, y: f64) -> Self {
-        Self { x, y }
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Self { x, y, z }
     }
     pub fn divide(&mut self, n: f64) {
         self.x = self.x / n;
         self.y = self.y / n;
+        self.z = self.z / n;
     }
-    pub fn distance_from(&self, other: Vec2) -> f64 {
-        f64::sqrt(f64::powi(self.x - other.x, 2) + f64::powi(self.y - other.y, 2))
+    pub fn distance_from(&self, other: Vec3) -> f64 {
+        f64::sqrt(
+            f64::powi(self.x - other.x, 2) +
+                f64::powi(self.y - other.y, 2) +
+                f64::powi(self.z - other.z, 2)
+        )
     }
 }
-impl ops::Add for Vec2 {
-    type Output = Vec2;
+impl ops::Add for Vec3 {
+    type Output = Vec3;
     fn add(self, rhs: Self) -> Self::Output {
-        Vec2 {
+        Vec3 {
             x: self.x + rhs.x,
             y: self.y + rhs.y,
+            z: self.z + rhs.z,
         }
     }
 }
-impl ops::Sub for Vec2 {
-    type Output = Vec2;
+impl ops::Sub for Vec3 {
+    type Output = Vec3;
     fn sub(self, rhs: Self) -> Self::Output {
-        Vec2 {
+        Vec3 {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
+            z: self.z - rhs.z,
         }
     }
 }
-impl ops::AddAssign for Vec2 {
+impl ops::AddAssign for Vec3 {
     fn add_assign(&mut self, other: Self) {
         *self = Self {
             x: self.x + other.x,
             y: self.y + other.y,
+            z: self.z + other.z,
         };
     }
 }
-impl ops::DivAssign<f64> for Vec2 {
+impl ops::DivAssign<f64> for Vec3 {
     fn div_assign(&mut self, d: f64) {
         self.x /= d;
         self.y /= d;
+        self.z /= d;
     }
 }
-impl ops::Mul<f64> for Vec2 {
+impl ops::Mul<f64> for Vec3 {
     type Output = Self;
     fn mul(self, m: f64) -> Self {
-        Self::new(self.x * m, self.y * m)
+        Self::new(self.x * m, self.y * m, self.z * m)
     }
 }
-impl ops::Div<f64> for Vec2 {
+impl ops::Div<f64> for Vec3 {
     type Output = Self;
     fn div(self, m: f64) -> Self {
-        Self::new(self.x / m, self.y / m)
-    }
-}
-
-#[wasm_bindgen]
-#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
-pub struct Rod {
-    pub length: f64,
-    pub mass: f64,
-    pub color: u32,
-}
-#[wasm_bindgen]
-impl Rod {
-    #[wasm_bindgen(constructor)]
-    pub fn new(length: f64, mass: f64, color: u32) -> Rod {
-        Rod { length, mass, color }
-    }
-    pub fn update_length(&mut self, length: f64) {
-        self.length = length;
-    }
-    pub fn get_data(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self).unwrap()
+        Self::new(self.x / m, self.y / m, self.z / m)
     }
 }
 
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct Trail {
-    pub pos: Vec2,
+    pub pos: Vec3,
     pub color: u32,
 }
 
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, PartialEq, Clone)]
-pub struct Ball {
-    pub pos: Vec2,
-    pub omega: f64,
-    pub theta: f64,
-    pub rod: Rod,
+pub struct Planet {
+    pub pos: Vec3,
+    pub vel: Vec3,
+    pub acc: Vec3,
     trail: Vec<Trail>,
     pub radius: i32,
     pub mass: f64,
     pub color: u32,
 }
 #[wasm_bindgen]
-impl Ball {
+impl Planet {
     #[wasm_bindgen(constructor)]
-    pub fn new(
-        px: f64,
-        py: f64,
-        omega: f64,
-        theta: f64,
-        rl: f64,
-        rm: f64,
-        rc: u32,
-        radius: i32,
-        mass: f64,
-        color: u32
-    ) -> Ball {
-        Ball {
-            pos: Vec2::new(px, py),
-            omega,
-            theta,
+    pub fn new(px: f64, py: f64, pz: f64, radius: i32, mass: f64, color: u32) -> Planet {
+        Planet {
+            pos: Vec3::new(px, py, pz),
+            vel: Vec3::new(0.0, 0.0, 0.0),
+            acc: Vec3::new(0.0, 0.0, 0.0),
             radius,
             mass,
             color,
-            rod: Rod::new(rl, rm, rc),
             trail: vec![],
         }
     }
@@ -143,7 +118,7 @@ impl Ball {
         self.trail.clone()
     }
 
-    pub fn add_trail_point(&mut self, pos: Vec2, color: u32, max: usize) {
+    pub fn add_trail_point(&mut self, pos: Vec3, color: u32, max: usize) {
         self.trail.push(Trail { pos, color });
         if self.trail.len() > max {
             self.trail.remove(0);
@@ -167,14 +142,14 @@ pub enum Implementation {
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Universe {
-    balls: Vec<Ball>,
+    planets: Vec<Planet>,
     gravity: f64,
     mass_calculation: bool,
     show_trails: bool,
     is_paused: bool,
     implementation: Implementation,
     speed: f64,
-    max_balls: usize,
+    max_planets: usize,
     initial_energy: f64,
     default_mass: f64,
     limit_total_energy: bool,
@@ -186,20 +161,17 @@ impl Universe {
         // panic::set_hook(Box::new(console_error_panic_hook::hook));
         // wasm_logger::init(wasm_logger::Config::default());
         // log::info!("Universe Init!");
-        //  self.x_1 = self.origin_x + self.length_rod_1 * math.sin(self.theta_1)
-        // self.y_1 = self.origin_y + self.length_rod_1 * math.cos(self.theta_1)
-        // self.x_2 = self.x_1 + self.length_rod_2 * math.sin(self.theta_2)
-        // self.y_2 = self.y_1 + self.length_rod_2 * math.cos(self.theta_2)
-        let ball1 = Ball::new(100.0, 0.0, 0.0, PI / 2.0, 100.0, 10.0, 0x0f0f0f, 10, 10.0, 0xff0000);
-        let ball2 = Ball::new(200.0, 0.0, 0.0, PI / 2.0, 100.0, 10.0, 0x0f0f0f, 10, 10.0, 0x0000ff);
+        //init
+        let planet1 = Planet::new(100.0, 0.0, 0.0, 10, 10.0, 0xff0000);
+        let planet2 = Planet::new(200.0, 0.0, 0.0, 10, 10.0, 0x0000ff);
         let mut universe = Universe {
-            balls: vec![ball1, ball2],
+            planets: vec![planet1, planet2],
             gravity: 9.8,
             implementation: Implementation::Euler,
             speed: 1.0 / 20.0,
             mass_calculation: true,
             show_trails: true,
-            max_balls: 100,
+            max_planets: 100,
             is_paused: false,
             initial_energy: 0.0, // Will be calculated next
             default_mass: 10.0, // Default mass used when mass_calculation is false
@@ -211,13 +183,13 @@ impl Universe {
         universe
     }
     pub fn time_step(&mut self, dt: f64) -> u8 {
-        if self.balls.is_empty() || self.is_paused {
+        if self.planets.is_empty() || self.is_paused {
             return 1;
         }
 
-        if self.balls.len() > self.max_balls {
+        if self.planets.len() > self.max_planets {
             // cutoff for Euler method, remove extras
-            self.balls.truncate(self.max_balls);
+            self.planets.truncate(self.max_planets);
         }
 
         // Calculate the effective speed multiplier
@@ -238,62 +210,63 @@ impl Universe {
 
         // Add trail points only once per frame (not per substep)
         if self.show_trails {
-            for ball in &mut self.balls {
-                ball.add_trail_point(ball.pos, ball.color, 250);
+            for planet in &mut self.planets {
+                planet.add_trail_point(planet.pos, planet.color, 250);
             }
         }
         return 0;
     }
 
-    // Normalize angle to [-PI, PI] range for better floating point precision
-    fn normalize_angle(angle: f64) -> f64 {
-        let mut a = angle % (2.0 * PI);
-        if a > PI {
-            a -= 2.0 * PI;
-        } else if a < -PI {
-            a += 2.0 * PI;
-        }
-        a
-    }
-
     // Calculate total potential energy of the system
-    // U = -sum(m_i * g * y_i) where y_i is the vertical position of each mass
+    // U = -G * sum_i(sum_j>i(m_i * m_j / r_ij))
     fn calculate_potential_energy(&self) -> f64 {
         let mut potential = 0.0;
-        let mut y_cumulative = 0.0;
 
-        for i in 0..self.balls.len() {
-            // Vertical position is cumulative (each mass hangs from the previous)
-            y_cumulative += self.balls[i].rod.length * f64::cos(self.balls[i].theta);
+        // Calculate gravitational potential energy between all pairs of planets
+        for i in 0..self.planets.len() {
+            for j in i + 1..self.planets.len() {
+                let mass_i = if self.mass_calculation {
+                    self.planets[i].mass
+                } else {
+                    self.default_mass
+                };
+                let mass_j = if self.mass_calculation {
+                    self.planets[j].mass
+                } else {
+                    self.default_mass
+                };
 
-            // Potential energy (negative because positive y is down)
-            let mass = if self.mass_calculation { self.balls[i].mass } else { self.default_mass };
-            potential -= mass * self.gravity * y_cumulative;
+                let distance = self.planets[i].pos.distance_from(self.planets[j].pos);
+
+                // Avoid division by zero
+                if distance > 0.0 {
+                    // Gravitational potential energy: -G * m1 * m2 / r
+                    // Note: Using self.gravity as the gravitational constant here
+                    potential -= (self.gravity * mass_i * mass_j) / distance;
+                }
+            }
         }
+
         potential
     }
 
     // Calculate total kinetic energy of the system
+    // KE = 0.5 * sum_i(m_i * v_i^2)
     fn calculate_kinetic_energy(&self) -> f64 {
         let mut kinetic = 0.0;
 
-        for i in 0..self.balls.len() {
-            // For a multi-pendulum, kinetic energy includes contributions from all previous segments
-            let mut vx = 0.0;
-            let mut vy = 0.0;
+        for i in 0..self.planets.len() {
+            let mass = if self.mass_calculation { self.planets[i].mass } else { self.default_mass };
 
-            for j in 0..=i {
-                vx +=
-                    self.balls[j].rod.length * self.balls[j].omega * f64::cos(self.balls[j].theta);
-                vy +=
-                    -self.balls[j].rod.length * self.balls[j].omega * f64::sin(self.balls[j].theta);
-            }
+            // Kinetic energy: 0.5 * m * v^2
+            let v_squared =
+                self.planets[i].vel.x * self.planets[i].vel.x +
+                self.planets[i].vel.y * self.planets[i].vel.y +
+                self.planets[i].vel.z * self.planets[i].vel.z;
 
-            let v_squared = vx * vx + vy * vy;
-
-            let mass = if self.mass_calculation { self.balls[i].mass } else { self.default_mass };
             kinetic += 0.5 * mass * v_squared;
         }
+
         kinetic
     }
 
@@ -312,8 +285,10 @@ impl Universe {
         // If kinetic energy exceeds what's possible, scale down velocities
         if current_kinetic > max_kinetic && current_kinetic > 0.0 {
             let scale_factor = f64::sqrt(max_kinetic / current_kinetic);
-            for i in 0..self.balls.len() {
-                self.balls[i].omega *= scale_factor;
+            for i in 0..self.planets.len() {
+                self.planets[i].vel.x *= scale_factor;
+                self.planets[i].vel.y *= scale_factor;
+                self.planets[i].vel.z *= scale_factor;
             }
         }
     }
@@ -325,137 +300,227 @@ impl Universe {
 
     fn single_physics_step(&mut self, dt: f64) -> u8 {
         if self.implementation == Implementation::Euler {
-            let thetas: DVector<f64> = DVector::from_iterator(
-                self.balls.len(),
-                self.balls.iter().map(|ball| ball.theta)
-            );
-            let theta_dots: DVector<f64> = DVector::from_iterator(
-                self.balls.len(),
-                self.balls.iter().map(|ball| ball.omega)
-            );
-
-            // Calculate accelerations using the matrix method
-            let (_, theta_ddots) = self.calculate_accelerations(&thetas, &theta_dots);
+            // Calculate gravitational accelerations for all planets
+            let accelerations = self.calculate_gravitational_accelerations();
 
             // Check for NaN before updating
-            if theta_ddots.iter().any(|&x| x.is_nan()) {
+            if accelerations.iter().any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan())) {
                 return 1;
             }
 
-            // Euler integration: update velocities and positions
-            for i in 0..self.balls.len() {
-                self.balls[i].omega += theta_ddots[i] * dt;
-                self.balls[i].theta += self.balls[i].omega * dt;
+            // Euler integration: v = v + a*dt, then x = x + v*dt
+            for i in 0..self.planets.len() {
+                // Update velocities
+                self.planets[i].vel.x += accelerations[i].x * dt;
+                self.planets[i].vel.y += accelerations[i].y * dt;
+                self.planets[i].vel.z += accelerations[i].z * dt;
 
-                // Normalize angle to [-PI, PI] for better floating point precision
-                // self.balls[i].theta = Self::normalize_angle(self.balls[i].theta);
+                // Update positions
+                self.planets[i].pos.x += self.planets[i].vel.x * dt;
+                self.planets[i].pos.y += self.planets[i].vel.y * dt;
+                self.planets[i].pos.z += self.planets[i].vel.z * dt;
 
-                // Calculate positions (cumulative from origin)
-                let mut x = 0.0;
-                let mut y = 0.0;
-                for j in 0..=i {
-                    x += self.balls[j].rod.length * f64::sin(self.balls[j].theta);
-                    y += self.balls[j].rod.length * f64::cos(self.balls[j].theta);
-                }
-                self.balls[i].pos.x = x;
-                self.balls[i].pos.y = y;
+                // Store acceleration for potential use elsewhere
+                self.planets[i].acc = accelerations[i];
             }
         } else if self.implementation == Implementation::RK4 {
-            let thetas: DVector<f64> = DVector::from_iterator(
-                self.balls.len(),
-                self.balls.iter().map(|ball| ball.theta)
-            );
-            let theta_dots: DVector<f64> = DVector::from_iterator(
-                self.balls.len(),
-                self.balls.iter().map(|ball| ball.omega)
-            );
+            // Store initial positions and velocities
+            let initial_positions: Vec<Vec3> = self.planets
+                .iter()
+                .map(|p| p.pos)
+                .collect();
+            let initial_velocities: Vec<Vec3> = self.planets
+                .iter()
+                .map(|p| p.vel)
+                .collect();
 
-            let k1 = self.calculate_accelerations(&thetas, &theta_dots);
-            let k2 = self.calculate_accelerations(
-                &(thetas.clone() + &k1.0 * (0.5 * dt)),
-                &(theta_dots.clone() + &k1.1 * (0.5 * dt))
+            // k1: derivatives at current state
+            let k1_accel = self.calculate_gravitational_accelerations_for_state(
+                &initial_positions,
+                &initial_velocities
             );
-            let k3 = self.calculate_accelerations(
-                &(thetas.clone() + &k2.0 * (0.5 * dt)),
-                &(theta_dots.clone() + &k2.1 * (0.5 * dt))
-            );
-            let k4 = self.calculate_accelerations(
-                &(thetas.clone() + &k3.0 * (1.0 * dt)),
-                &(theta_dots.clone() + &k3.1 * (1.0 * dt))
-            );
+            let k1_vel = initial_velocities.clone();
 
-            // Calculate deltas: (k1 + 2*k2 + 2*k3 + k4) * dt/6
-            let theta_deltas = (&k1.0 + &k2.0 * 2.0 + &k3.0 * 2.0 + &k4.0) * (dt / 6.0);
-            let theta_dot_deltas = (&k1.1 + &k2.1 * 2.0 + &k3.1 * 2.0 + &k4.1) * (dt / 6.0);
-            // Update balls
-            for i in 0..self.balls.len() {
-                self.balls[i].theta += theta_deltas[i];
-                self.balls[i].omega += theta_dot_deltas[i];
-
-                // Normalize angle to [-PI, PI] for better floating point precision
-                // self.balls[i].theta = Self::normalize_angle(self.balls[i].theta);
-
-                // Calculate positions (cumulative from origin)
-                let mut x = 0.0;
-                let mut y = 0.0;
-                for j in 0..=i {
-                    x += self.balls[j].rod.length * f64::sin(self.balls[j].theta);
-                    y += self.balls[j].rod.length * f64::cos(self.balls[j].theta);
-                }
-                self.balls[i].pos.x = x;
-                self.balls[i].pos.y = y;
+            // k2: derivatives at midpoint with k1
+            let mut k2_positions = Vec::with_capacity(self.planets.len());
+            let mut k2_velocities = Vec::with_capacity(self.planets.len());
+            for i in 0..self.planets.len() {
+                k2_positions.push(
+                    Vec3::new(
+                        initial_positions[i].x + k1_vel[i].x * dt * 0.5,
+                        initial_positions[i].y + k1_vel[i].y * dt * 0.5,
+                        initial_positions[i].z + k1_vel[i].z * dt * 0.5
+                    )
+                );
+                k2_velocities.push(
+                    Vec3::new(
+                        initial_velocities[i].x + k1_accel[i].x * dt * 0.5,
+                        initial_velocities[i].y + k1_accel[i].y * dt * 0.5,
+                        initial_velocities[i].z + k1_accel[i].z * dt * 0.5
+                    )
+                );
             }
-        } else if self.implementation == Implementation::Verlet {
-            // Verlet integration (position-based with previous and current positions)
-            // Based on: x(t+dt) = x(t) + v(t)*dt + 0.5*a(t)*dt^2
-            // Then: v(t+dt) = 0.5*(a(t) + a(t+dt))*dt
-            let thetas: DVector<f64> = DVector::from_iterator(
-                self.balls.len(),
-                self.balls.iter().map(|ball| ball.theta)
-            );
-            let theta_dots: DVector<f64> = DVector::from_iterator(
-                self.balls.len(),
-                self.balls.iter().map(|ball| ball.omega)
+            let k2_accel = self.calculate_gravitational_accelerations_for_state(
+                &k2_positions,
+                &k2_velocities
             );
 
-            // Calculate current accelerations
-            let (_, theta_ddots) = self.calculate_accelerations(&thetas, &theta_dots);
+            // k3: derivatives at midpoint with k2
+            let mut k3_positions = Vec::with_capacity(self.planets.len());
+            let mut k3_velocities = Vec::with_capacity(self.planets.len());
+            for i in 0..self.planets.len() {
+                k3_positions.push(
+                    Vec3::new(
+                        initial_positions[i].x + k2_velocities[i].x * dt * 0.5,
+                        initial_positions[i].y + k2_velocities[i].y * dt * 0.5,
+                        initial_positions[i].z + k2_velocities[i].z * dt * 0.5
+                    )
+                );
+                k3_velocities.push(
+                    Vec3::new(
+                        initial_velocities[i].x + k2_accel[i].x * dt * 0.5,
+                        initial_velocities[i].y + k2_accel[i].y * dt * 0.5,
+                        initial_velocities[i].z + k2_accel[i].z * dt * 0.5
+                    )
+                );
+            }
+            let k3_accel = self.calculate_gravitational_accelerations_for_state(
+                &k3_positions,
+                &k3_velocities
+            );
 
-            if theta_ddots.iter().any(|&x| x.is_nan()) {
+            // k4: derivatives at endpoint with k3
+            let mut k4_positions = Vec::with_capacity(self.planets.len());
+            let mut k4_velocities = Vec::with_capacity(self.planets.len());
+            for i in 0..self.planets.len() {
+                k4_positions.push(
+                    Vec3::new(
+                        initial_positions[i].x + k3_velocities[i].x * dt,
+                        initial_positions[i].y + k3_velocities[i].y * dt,
+                        initial_positions[i].z + k3_velocities[i].z * dt
+                    )
+                );
+                k4_velocities.push(
+                    Vec3::new(
+                        initial_velocities[i].x + k3_accel[i].x * dt,
+                        initial_velocities[i].y + k3_accel[i].y * dt,
+                        initial_velocities[i].z + k3_accel[i].z * dt
+                    )
+                );
+            }
+            let k4_accel = self.calculate_gravitational_accelerations_for_state(
+                &k4_positions,
+                &k4_velocities
+            );
+
+            // Check for NaN
+            if
+                k1_accel.iter().any(|a| (a.x.is_nan() || a.y.is_nan() || a.z.is_nan())) ||
+                k2_accel.iter().any(|a| (a.x.is_nan() || a.y.is_nan() || a.z.is_nan())) ||
+                k3_accel.iter().any(|a| (a.x.is_nan() || a.y.is_nan() || a.z.is_nan())) ||
+                k4_accel.iter().any(|a| (a.x.is_nan() || a.y.is_nan() || a.z.is_nan()))
+            {
                 return 1;
             }
 
-            // Update positions: theta_new = theta + omega*dt + 0.5*alpha*dt^2
-            let mut new_thetas = DVector::from_element(self.balls.len(), 0.0);
-            for i in 0..self.balls.len() {
-                new_thetas[i] = thetas[i] + theta_dots[i] * dt + 0.5 * theta_ddots[i] * dt * dt;
+            // Final RK4 update: (k1 + 2*k2 + 2*k3 + k4) / 6
+            for i in 0..self.planets.len() {
+                self.planets[i].pos.x +=
+                    ((k1_vel[i].x +
+                        2.0 * k2_velocities[i].x +
+                        2.0 * k3_velocities[i].x +
+                        k4_velocities[i].x) *
+                        dt) /
+                    6.0;
+                self.planets[i].pos.y +=
+                    ((k1_vel[i].y +
+                        2.0 * k2_velocities[i].y +
+                        2.0 * k3_velocities[i].y +
+                        k4_velocities[i].y) *
+                        dt) /
+                    6.0;
+                self.planets[i].pos.z +=
+                    ((k1_vel[i].z +
+                        2.0 * k2_velocities[i].z +
+                        2.0 * k3_velocities[i].z +
+                        k4_velocities[i].z) *
+                        dt) /
+                    6.0;
+
+                self.planets[i].vel.x +=
+                    ((k1_accel[i].x + 2.0 * k2_accel[i].x + 2.0 * k3_accel[i].x + k4_accel[i].x) *
+                        dt) /
+                    6.0;
+                self.planets[i].vel.y +=
+                    ((k1_accel[i].y + 2.0 * k2_accel[i].y + 2.0 * k3_accel[i].y + k4_accel[i].y) *
+                        dt) /
+                    6.0;
+                self.planets[i].vel.z +=
+                    ((k1_accel[i].z + 2.0 * k2_accel[i].z + 2.0 * k3_accel[i].z + k4_accel[i].z) *
+                        dt) /
+                    6.0;
+
+                // Store final acceleration
+                self.planets[i].acc = k1_accel[i];
+            }
+        } else if self.implementation == Implementation::Verlet {
+            // Verlet integration (position-based)
+            // Based on: x(t+dt) = x(t) + v(t)*dt + 0.5*a(t)*dt^2
+            // Then: v(t+dt) = v(t) + 0.5*(a(t) + a(t+dt))*dt
+
+            // Calculate current accelerations
+            let accelerations = self.calculate_gravitational_accelerations();
+
+            if accelerations.iter().any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan())) {
+                return 1;
+            }
+
+            // Update positions: x_new = x + v*dt + 0.5*a*dt^2
+            let mut new_positions = Vec::with_capacity(self.planets.len());
+            for i in 0..self.planets.len() {
+                new_positions.push(
+                    Vec3::new(
+                        self.planets[i].pos.x +
+                            self.planets[i].vel.x * dt +
+                            0.5 * accelerations[i].x * dt * dt,
+                        self.planets[i].pos.y +
+                            self.planets[i].vel.y * dt +
+                            0.5 * accelerations[i].y * dt * dt,
+                        self.planets[i].pos.z +
+                            self.planets[i].vel.z * dt +
+                            0.5 * accelerations[i].z * dt * dt
+                    )
+                );
             }
 
             // Calculate new accelerations at new positions
-            let (_, theta_ddots_new) = self.calculate_accelerations(&new_thetas, &theta_dots);
+            let new_accelerations = self.calculate_gravitational_accelerations_for_state(
+                &new_positions,
+                &self.planets
+                    .iter()
+                    .map(|p| p.vel)
+                    .collect::<Vec<_>>()
+            );
 
-            if theta_ddots_new.iter().any(|&x| x.is_nan()) {
+            if
+                new_accelerations
+                    .iter()
+                    .any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan()))
+            {
                 return 1;
             }
 
-            // Update velocities: omega_new = omega + 0.5*(alpha_old + alpha_new)*dt
-            for i in 0..self.balls.len() {
-                self.balls[i].omega =
-                    theta_dots[i] + 0.5 * (theta_ddots[i] + theta_ddots_new[i]) * dt;
-                self.balls[i].theta = new_thetas[i];
+            // Update velocities: v_new = v + 0.5*(a_old + a_new)*dt
+            for i in 0..self.planets.len() {
+                self.planets[i].vel.x += 0.5 * (accelerations[i].x + new_accelerations[i].x) * dt;
+                self.planets[i].vel.y += 0.5 * (accelerations[i].y + new_accelerations[i].y) * dt;
+                self.planets[i].vel.z += 0.5 * (accelerations[i].z + new_accelerations[i].z) * dt;
 
-                // Normalize angle to [-PI, PI] for better floating point precision
-                self.balls[i].theta = Self::normalize_angle(self.balls[i].theta);
+                // Update positions
+                self.planets[i].pos = new_positions[i];
 
-                // Calculate positions (cumulative from origin)
-                let mut x = 0.0;
-                let mut y = 0.0;
-                for j in 0..=i {
-                    x += self.balls[j].rod.length * f64::sin(self.balls[j].theta);
-                    y += self.balls[j].rod.length * f64::cos(self.balls[j].theta);
-                }
-                self.balls[i].pos.x = x;
-                self.balls[i].pos.y = y;
+                // Store acceleration
+                self.planets[i].acc = new_accelerations[i];
             }
         } else if self.implementation == Implementation::Leapfrog {
             // Leapfrog integration (velocity half-steps)
@@ -463,58 +528,62 @@ impl Universe {
             //           x(t+dt) = x(t) + v(t+dt/2)*dt
             //           a(t+dt) = acceleration at new position
             //           v(t+dt) = v(t+dt/2) + a(t+dt)*dt/2
-            let thetas: DVector<f64> = DVector::from_iterator(
-                self.balls.len(),
-                self.balls.iter().map(|ball| ball.theta)
-            );
-            let theta_dots: DVector<f64> = DVector::from_iterator(
-                self.balls.len(),
-                self.balls.iter().map(|ball| ball.omega)
-            );
 
-            // Step 1: Half-step velocity update
-            let (_, theta_ddots) = self.calculate_accelerations(&thetas, &theta_dots);
+            // Step 1: Calculate initial accelerations
+            let accelerations = self.calculate_gravitational_accelerations();
 
             // Check for NaN before updating
-            if theta_ddots.iter().any(|&x| x.is_nan()) {
+            if accelerations.iter().any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan())) {
                 return 1;
             }
 
-            let mut theta_dots_half = theta_dots.clone();
-            for i in 0..self.balls.len() {
-                theta_dots_half[i] += theta_ddots[i] * (dt / 2.0);
+            // Step 2: Half-step velocity update
+            let mut velocities_half = Vec::with_capacity(self.planets.len());
+            for i in 0..self.planets.len() {
+                velocities_half.push(
+                    Vec3::new(
+                        self.planets[i].vel.x + accelerations[i].x * (dt / 2.0),
+                        self.planets[i].vel.y + accelerations[i].y * (dt / 2.0),
+                        self.planets[i].vel.z + accelerations[i].z * (dt / 2.0)
+                    )
+                );
             }
 
-            // Step 2: Full-step position update using half-step velocity
-            let mut new_thetas = thetas.clone();
-            for i in 0..self.balls.len() {
-                new_thetas[i] += theta_dots_half[i] * dt;
+            // Step 3: Full-step position update using half-step velocity
+            let mut new_positions = Vec::with_capacity(self.planets.len());
+            for i in 0..self.planets.len() {
+                new_positions.push(
+                    Vec3::new(
+                        self.planets[i].pos.x + velocities_half[i].x * dt,
+                        self.planets[i].pos.y + velocities_half[i].y * dt,
+                        self.planets[i].pos.z + velocities_half[i].z * dt
+                    )
+                );
             }
 
-            // Step 3: Calculate accelerations at new position
-            let (_, theta_ddots_new) = self.calculate_accelerations(&new_thetas, &theta_dots_half);
+            // Step 4: Calculate accelerations at new positions
+            let new_accelerations = self.calculate_gravitational_accelerations_for_state(
+                &new_positions,
+                &velocities_half
+            );
 
-            if theta_ddots_new.iter().any(|&x| x.is_nan()) {
+            if
+                new_accelerations
+                    .iter()
+                    .any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan()))
+            {
                 return 1;
             }
 
-            // Step 4: Complete velocity update with second half-step
-            for i in 0..self.balls.len() {
-                self.balls[i].theta = new_thetas[i];
-                self.balls[i].omega = theta_dots_half[i] + theta_ddots_new[i] * (dt / 2.0);
+            // Step 5: Complete velocity update with second half-step
+            for i in 0..self.planets.len() {
+                self.planets[i].pos = new_positions[i];
+                self.planets[i].vel.x = velocities_half[i].x + new_accelerations[i].x * (dt / 2.0);
+                self.planets[i].vel.y = velocities_half[i].y + new_accelerations[i].y * (dt / 2.0);
+                self.planets[i].vel.z = velocities_half[i].z + new_accelerations[i].z * (dt / 2.0);
 
-                // Normalize angle to [-PI, PI] for better floating point precision
-                self.balls[i].theta = Self::normalize_angle(self.balls[i].theta);
-
-                // Calculate positions (cumulative from origin)
-                let mut x = 0.0;
-                let mut y = 0.0;
-                for j in 0..=i {
-                    x += self.balls[j].rod.length * f64::sin(self.balls[j].theta);
-                    y += self.balls[j].rod.length * f64::cos(self.balls[j].theta);
-                }
-                self.balls[i].pos.x = x;
-                self.balls[i].pos.y = y;
+                // Store acceleration
+                self.planets[i].acc = new_accelerations[i];
             }
         }
 
@@ -525,129 +594,140 @@ impl Universe {
 
         return 0;
     }
-    fn calculate_accelerations(
+    // Calculate gravitational accelerations for a given set of planet positions and masses
+    // Used for RK4 integration with intermediate states
+    fn calculate_gravitational_accelerations_for_state(
         &self,
-        thetas: &DVector<f64>,
-        theta_dots: &DVector<f64>
-    ) -> (DVector<f64>, DVector<f64>) {
-        let n = self.balls.len();
+        positions: &[Vec3],
+        _velocities: &[Vec3]
+    ) -> Vec<Vec3> {
+        let n = positions.len();
+        let mut accelerations = vec![Vec3::new(0.0, 0.0, 0.0); n];
 
-        if self.mass_calculation {
-            // Extract masses and lengths
-            let masses: Vec<f64> = self.balls
-                .iter()
-                .map(|ball| ball.mass)
-                .collect();
-            let lengths: Vec<f64> = self.balls
-                .iter()
-                .map(|ball| ball.rod.length)
-                .collect();
+        // Calculate gravitational forces between all pairs of planets
+        for i in 0..n {
+            let mass_i = if self.mass_calculation {
+                self.planets[i].mass
+            } else {
+                self.default_mass
+            };
 
-            // Build the mass matrix M
-            let mut m: DMatrix<f64> = DMatrix::from_element(n, n, 0.0);
-            for i in 0..n {
-                for j in 0..n {
-                    // Sum of masses from max(i,j) to n-1
-                    let mass_sum: f64 = (usize::max(i, j)..n).map(|k| masses[k]).sum();
+            for j in 0..n {
+                if i != j {
+                    let mass_j = if self.mass_calculation {
+                        self.planets[j].mass
+                    } else {
+                        self.default_mass
+                    };
 
-                    m[(i, j)] =
-                        mass_sum * lengths[i] * lengths[j] * f64::cos(thetas[i] - thetas[j]);
+                    // Vector from planet i to planet j
+                    let dx = positions[j].x - positions[i].x;
+                    let dy = positions[j].y - positions[i].y;
+                    let dz = positions[j].z - positions[i].z;
+
+                    // Distance between planets
+                    let distance_squared = dx * dx + dy * dy + dz * dz;
+                    let distance = f64::sqrt(distance_squared);
+
+                    // Avoid division by zero and singularities
+                    if distance > 1e-10 {
+                        // Gravitational force magnitude: F = G * m1 * m2 / r^2
+                        let force_magnitude = (self.gravity * mass_i * mass_j) / distance_squared;
+
+                        // Unit vector from i to j
+                        let unit_x = dx / distance;
+                        let unit_y = dy / distance;
+                        let unit_z = dz / distance;
+
+                        // Acceleration = Force / mass (for planet i)
+                        let acc_magnitude = force_magnitude / mass_i;
+
+                        // Add acceleration components to planet i (pointing toward planet j)
+                        accelerations[i].x += acc_magnitude * unit_x;
+                        accelerations[i].y += acc_magnitude * unit_y;
+                        accelerations[i].z += acc_magnitude * unit_z;
+                    }
                 }
             }
-
-            let mut v = DVector::from_element(n, 0.0);
-            for i in 0..n {
-                let mut sum = 0.0;
-
-                for j in 0..n {
-                    let mass_sum: f64 = (usize::max(i, j)..n).map(|k| masses[k]).sum();
-
-                    sum -=
-                        mass_sum *
-                        lengths[i] *
-                        lengths[j] *
-                        f64::sin(thetas[i] - thetas[j]) *
-                        f64::powi(theta_dots[j], 2);
-                }
-
-                // Gravitational term
-                let mass_sum_i: f64 = (i..n).map(|k| masses[k]).sum();
-                sum -= self.gravity * mass_sum_i * lengths[i] * f64::sin(thetas[i]);
-
-                v[i] = sum;
-            }
-
-            let lu = LU::new(m);
-            let theta_ddots = lu.solve(&v).unwrap_or_else(|| DVector::from_element(n, 0.0));
-
-            (theta_dots.clone(), theta_ddots)
-        } else {
-            // Use default mass for all balls when mass_calculation is false
-            let masses: Vec<f64> = vec![self.default_mass; n];
-            let lengths: Vec<f64> = self.balls
-                .iter()
-                .map(|ball| ball.rod.length)
-                .collect();
-
-            // Build the mass matrix M (same as mass_calculation=true, but with default_mass)
-            let mut m: DMatrix<f64> = DMatrix::from_element(n, n, 0.0);
-            for i in 0..n {
-                for j in 0..n {
-                    // Sum of masses from max(i,j) to n-1
-                    let mass_sum: f64 = (usize::max(i, j)..n).map(|k| masses[k]).sum();
-
-                    m[(i, j)] =
-                        mass_sum * lengths[i] * lengths[j] * f64::cos(thetas[i] - thetas[j]);
-                }
-            }
-
-            // Build the force vector
-            let mut v = DVector::from_element(n, 0.0);
-            for i in 0..n {
-                let mut sum = 0.0;
-
-                for j in 0..n {
-                    let mass_sum: f64 = (usize::max(i, j)..n).map(|k| masses[k]).sum();
-
-                    sum -=
-                        mass_sum *
-                        lengths[i] *
-                        lengths[j] *
-                        f64::sin(thetas[i] - thetas[j]) *
-                        f64::powi(theta_dots[j], 2);
-                }
-
-                // Gravitational term
-                let mass_sum_i: f64 = (i..n).map(|k| masses[k]).sum();
-                sum -= self.gravity * mass_sum_i * lengths[i] * f64::sin(thetas[i]);
-
-                v[i] = sum;
-            }
-
-            // Solve M * theta_ddot = v for theta_ddot
-            let lu = LU::new(m);
-            let theta_ddots = lu.solve(&v).unwrap_or_else(|| DVector::from_element(n, 0.0));
-
-            (theta_dots.clone(), theta_ddots)
         }
+
+        accelerations
+    }
+
+    // Calculate gravitational accelerations for all planets
+    // Returns acceleration vectors for each planet based on gravitational forces from all others
+    fn calculate_gravitational_accelerations(&self) -> Vec<Vec3> {
+        let n = self.planets.len();
+        let mut accelerations = vec![Vec3::new(0.0, 0.0, 0.0); n];
+
+        // Calculate gravitational forces between all pairs of planets
+        for i in 0..n {
+            let mass_i = if self.mass_calculation {
+                self.planets[i].mass
+            } else {
+                self.default_mass
+            };
+
+            for j in 0..n {
+                if i != j {
+                    let mass_j = if self.mass_calculation {
+                        self.planets[j].mass
+                    } else {
+                        self.default_mass
+                    };
+
+                    // Vector from planet i to planet j
+                    let dx = self.planets[j].pos.x - self.planets[i].pos.x;
+                    let dy = self.planets[j].pos.y - self.planets[i].pos.y;
+                    let dz = self.planets[j].pos.z - self.planets[i].pos.z;
+
+                    // Distance between planets
+                    let distance_squared = dx * dx + dy * dy + dz * dz;
+                    let distance = f64::sqrt(distance_squared);
+
+                    // Avoid division by zero and singularities
+                    if distance > 1e-10 {
+                        // Gravitational force magnitude: F = G * m1 * m2 / r^2
+                        // Here self.gravity is our gravitational constant
+                        let force_magnitude = (self.gravity * mass_i * mass_j) / distance_squared;
+
+                        // Unit vector from i to j
+                        let unit_x = dx / distance;
+                        let unit_y = dy / distance;
+                        let unit_z = dz / distance;
+
+                        // Acceleration = Force / mass (for planet i)
+                        let acc_magnitude = force_magnitude / mass_i;
+
+                        // Add acceleration components to planet i (pointing toward planet j)
+                        accelerations[i].x += acc_magnitude * unit_x;
+                        accelerations[i].y += acc_magnitude * unit_y;
+                        accelerations[i].z += acc_magnitude * unit_z;
+                    }
+                }
+            }
+        }
+
+        accelerations
     }
     pub fn reset(&mut self) {
         *self = Universe::new();
     }
-    pub fn add_ball(
+    pub fn add_planet(
         &mut self,
         px: f64,
         py: f64,
-        omega: f64,
-        theta: f64,
-        rl: f64,
-        rm: f64,
-        rc: u32,
+        pz: f64,
+        vx: f64,
+        vy: f64,
+        vz: f64,
         radius: i32,
         mass: f64,
         color: u32
     ) {
-        self.balls.push(Ball::new(px, py, omega, theta, rl, rm, rc, radius, mass, color));
+        let mut planet = Planet::new(px, py, pz, radius, mass, color);
+        planet.vel = Vec3::new(vx, vy, vz);
+        self.planets.push(planet);
         self.update_initial_energy();
     }
 
@@ -656,115 +736,73 @@ impl Universe {
         let colors = [0xff0000, 0x0000ff, 0x00ff00, 0xf0f000, 0x00f0f0, 0xf000f0];
         colors[rand::rng().random_range(0..colors.len())]
     }
-    pub fn add_ball_simple(&mut self, theta: f64) {
-        let default_length = 100.0;
+    pub fn add_planet_simple(&mut self, px: f64, py: f64, pz: f64) {
         let default_mass = 10.0;
         let default_color = Self::random_color();
-        let default_rod_color = 0x0f0f0f;
+        let default_radius = 10;
 
-        // Calculate position from previous ball or origin
-        let (px, py) = if let Some(last_ball) = self.balls.last() {
-            (
-                last_ball.pos.x + default_length * f64::sin(theta),
-                last_ball.pos.y + default_length * f64::cos(theta),
-            )
-        } else {
-            (default_length * f64::sin(theta), default_length * f64::cos(theta))
-        };
-
-        self.balls.push(
-            Ball::new(
-                px,
-                py,
-                0.0,
-                theta,
-                default_length,
-                default_mass,
-                default_rod_color,
-                10,
-                default_mass,
-                default_color
-            )
-        );
+        self.planets.push(Planet::new(px, py, pz, default_radius, default_mass, default_color));
         self.update_initial_energy();
     }
-    pub fn remove_ball(&mut self) {
-        self.balls.pop();
+    pub fn remove_planet(&mut self) {
+        self.planets.pop();
         self.update_initial_energy();
     }
-    pub fn get_balls(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.balls).unwrap()
+    pub fn get_planets(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.planets).unwrap()
     }
 
-    pub fn get_ball(&self, index: usize) -> Option<Ball> {
-        self.balls.get(index).cloned()
+    pub fn get_planet(&self, index: usize) -> Option<Planet> {
+        self.planets.get(index).cloned()
     }
-    pub fn get_ball_count(&self) -> i32 {
-        self.balls.len() as i32
+    pub fn get_planet_count(&self) -> i32 {
+        self.planets.len() as i32
     }
 
-    pub fn update_ball_theta(&mut self, index: usize, theta: f64) {
-        if index < self.balls.len() {
-            self.balls[index].theta = theta;
-
-            // Recalculate positions for this ball and all subsequent balls
-            for i in index..self.balls.len() {
-                let (mut x, mut y) = if i == 0 {
-                    (0.0, 0.0)
-                } else {
-                    (self.balls[i - 1].pos.x, self.balls[i - 1].pos.y)
-                };
-
-                x += self.balls[i].rod.length * f64::sin(self.balls[i].theta);
-                y += self.balls[i].rod.length * f64::cos(self.balls[i].theta);
-
-                self.balls[i].pos.x = x;
-                self.balls[i].pos.y = y;
-            }
+    pub fn update_planet_position(&mut self, index: usize, x: f64, y: f64, z: f64) {
+        if index < self.planets.len() {
+            self.planets[index].pos = Vec3::new(x, y, z);
             self.update_initial_energy();
         }
     }
 
-    pub fn update_ball_length(&mut self, index: usize, length: f64) {
-        if index < self.balls.len() {
-            self.balls[index].rod.length = length;
-            // Recalculate positions for this ball and all subsequent balls
-            self.update_ball_theta(index, self.balls[index].theta);
-            // update_ball_theta already calls update_initial_energy
-        }
-    }
-
-    pub fn update_ball_mass(&mut self, index: usize, mass: f64) {
-        if index < self.balls.len() {
-            self.balls[index].mass = mass;
+    pub fn update_planet_velocity(&mut self, index: usize, vx: f64, vy: f64, vz: f64) {
+        if index < self.planets.len() {
+            self.planets[index].vel = Vec3::new(vx, vy, vz);
             self.update_initial_energy();
         }
     }
 
-    pub fn update_ball_color(&mut self, index: usize, color: u32) {
-        if index < self.balls.len() {
-            self.balls[index].color = color;
-        }
-    }
-
-    pub fn update_ball_radius(&mut self, index: usize, radius: i32) {
-        if index < self.balls.len() {
-            self.balls[index].radius = radius;
-        }
-    }
-
-    pub fn update_ball_omega(&mut self, index: usize, omega: f64) {
-        if index < self.balls.len() {
-            self.balls[index].omega = omega;
+    pub fn update_planet_mass(&mut self, index: usize, mass: f64) {
+        if index < self.planets.len() {
+            self.planets[index].mass = mass;
             self.update_initial_energy();
+        }
+    }
+
+    pub fn update_planet_color(&mut self, index: usize, color: u32) {
+        if index < self.planets.len() {
+            self.planets[index].color = color;
+        }
+    }
+
+    pub fn update_planet_radius(&mut self, index: usize, radius: i32) {
+        if index < self.planets.len() {
+            self.planets[index].radius = radius;
+        }
+    }
+
+    pub fn update_planet_acceleration(&mut self, index: usize, ax: f64, ay: f64, az: f64) {
+        if index < self.planets.len() {
+            self.planets[index].acc = Vec3::new(ax, ay, az);
         }
     }
 
     pub fn get_trails(&self) -> JsValue {
         if self.show_trails {
-            let trails: Vec<Vec<Trail>> = self.balls
+            let trails: Vec<Vec<Trail>> = self.planets
                 .iter()
-                .map(|ball| ball.trail.clone())
+                .map(|planet| planet.trail.clone())
                 .collect();
             serde_wasm_bindgen::to_value(&trails).unwrap()
         } else {

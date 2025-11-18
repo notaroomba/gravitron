@@ -1,19 +1,25 @@
 {
-  "name": "gravity",
+  "name": "gravitron",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "dev": "vite --force",
+    "build": "npm run build:rust && vite build",
+    "build:rust": "cd src/physics && cargo build --release && rustup run stable wasm-pack build --release && bun i",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/fiber": "^9.4.0",
     "@tailwindcss/vite": "^4.1.17",
+    "@types/three": "^0.181.0",
+    "physics-engine": "file:src/physics/pkg",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwindcss": "^4.1.17"
+    "tailwindcss": "^4.1.17",
+    "three": "^0.181.1",
+    "vite-plugin-top-level-await": "^1.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -27,6 +33,7 @@
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.3",
-    "vite": "^7.2.2"
+    "vite": "^7.2.2",
+    "vite-plugin-wasm": "^3.5.0"
   }
 }
