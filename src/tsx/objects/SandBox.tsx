@@ -45,8 +45,8 @@ export default function SandBox({
         info.random ? Math.random() * 12 + 1 : 12,
         info.random ? Math.random() * 1000 : universe.get_mass(),
         new Color(
-          planetColors[Math.floor(planetColors.length * Math.random())],
-        ).toHex(),
+          planetColors[Math.floor(planetColors.length * Math.random())]
+        ).toHex()
       );
     }
     universe.rebuild();
@@ -77,8 +77,8 @@ export function resetSimulation() {
       info.random ? Math.random() * 12 + 1 : 12,
       info.random ? Math.random() * 1000 : universe.get_mass(),
       new Color(
-        planetColors[Math.floor(planetColors.length * Math.random())],
-      ).toHex(),
+        planetColors[Math.floor(planetColors.length * Math.random())]
+      ).toHex()
     );
   }
   universe.rebuild();
@@ -98,8 +98,8 @@ export function changePlanets(event: ChangeEvent<HTMLInputElement>) {
         info.random ? Math.random() * 12 + 1 : 12,
         info.random ? Math.random() * universe.get_mass() : universe.get_mass(),
         new Color(
-          planetColors[Math.floor(planetColors.length * Math.random())],
-        ).toHex(),
+          planetColors[Math.floor(planetColors.length * Math.random())]
+        ).toHex()
       );
     }
   } else {
