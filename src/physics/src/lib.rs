@@ -102,7 +102,29 @@ pub struct Planet {
 #[wasm_bindgen]
 impl Planet {
     #[wasm_bindgen(constructor)]
-    pub fn new(px: f64, py: f64, pz: f64, radius: i32, mass: f64, color: u32) -> Planet {
+    pub fn new(
+        px: f64,
+        py: f64,
+        pz: f64,
+        radius: i32,
+        mass: f64,
+        color: u32,
+        vx: f64,
+        vy: f64,
+        vz: f64
+    ) -> Planet {
+        Planet {
+            pos: Vec3::new(px, py, pz),
+            vel: Vec3::new(vx, vy, vz),
+            acc: Vec3::new(0.0, 0.0, 0.0),
+            radius,
+            mass,
+            color,
+            trail: vec![],
+        }
+    }
+
+    pub fn new_simple(px: f64, py: f64, pz: f64, radius: i32, mass: f64, color: u32) -> Planet {
         Planet {
             pos: Vec3::new(px, py, pz),
             vel: Vec3::new(0.0, 0.0, 0.0),
@@ -113,7 +135,6 @@ impl Planet {
             trail: vec![],
         }
     }
-
     pub fn get_trail(&self) -> Vec<Trail> {
         self.trail.clone()
     }
@@ -161,12 +182,13 @@ impl Universe {
         // panic::set_hook(Box::new(console_error_panic_hook::hook));
         // wasm_logger::init(wasm_logger::Config::default());
         // log::info!("Universe Init!");
-        //init
-        let planet1 = Planet::new(100.0, 0.0, 0.0, 10, 10.0, 0xff0000);
-        let planet2 = Planet::new(200.0, 0.0, 0.0, 10, 10.0, 0x0000ff);
+        //init - Closer 3-body system (moved ~20 units closer to origin)
+        let planet1 = Planet::new(-80.0, 0.0, -60.0, 1, 50000.0, 0xff0000, 0.0, 150.0, -30.0);
+        let planet2 = Planet::new(30.0, 67.0, 70.0, 1, 50000.0, 0x0000ff, -130.0, -7.5, 10.0);
+        let planet3 = Planet::new(30.0, -67.0, 12.0, 1, 50000.0, 0x00ff00, 130.0, -7.5, 25.0);
         let mut universe = Universe {
-            planets: vec![planet1, planet2],
-            gravity: 9.8,
+            planets: vec![planet1, planet2, planet3],
+            gravity: 6.6743e1,
             implementation: Implementation::Euler,
             speed: 1.0 / 20.0,
             mass_calculation: true,
@@ -174,7 +196,7 @@ impl Universe {
             max_planets: 100,
             is_paused: false,
             initial_energy: 0.0, // Will be calculated next
-            default_mass: 10.0, // Default mass used when mass_calculation is false
+            default_mass: 100000.0, // Default mass used when mass_calculation is false
             limit_total_energy: false, // Enable energy limiting off by default
         };
         // Calculate initial total energy (potential + kinetic)
@@ -209,6 +231,7 @@ impl Universe {
         }
 
         // Add trail points only once per frame (not per substep)
+        // Ensure trail points are added after all physics calculations are complete
         if self.show_trails {
             for planet in &mut self.planets {
                 planet.add_trail_point(planet.pos, planet.color, 250);
@@ -304,7 +327,8 @@ impl Universe {
             let accelerations = self.calculate_gravitational_accelerations();
 
             // Check for NaN before updating
-            if accelerations.iter().any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan())) {
+            // prettier-ignore
+            if accelerations.iter().any(|acc| acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan()) {
                 return 1;
             }
 
@@ -414,11 +438,12 @@ impl Universe {
             );
 
             // Check for NaN
+            // prettier-ignore
             if
-                k1_accel.iter().any(|a| (a.x.is_nan() || a.y.is_nan() || a.z.is_nan())) ||
-                k2_accel.iter().any(|a| (a.x.is_nan() || a.y.is_nan() || a.z.is_nan())) ||
-                k3_accel.iter().any(|a| (a.x.is_nan() || a.y.is_nan() || a.z.is_nan())) ||
-                k4_accel.iter().any(|a| (a.x.is_nan() || a.y.is_nan() || a.z.is_nan()))
+                k1_accel.iter().any(|a| a.x.is_nan() || a.y.is_nan() || a.z.is_nan()) ||
+                k2_accel.iter().any(|a| a.x.is_nan() || a.y.is_nan() || a.z.is_nan()) ||
+                k3_accel.iter().any(|a| a.x.is_nan() || a.y.is_nan() || a.z.is_nan()) ||
+                k4_accel.iter().any(|a| a.x.is_nan() || a.y.is_nan() || a.z.is_nan())
             {
                 return 1;
             }
@@ -470,8 +495,8 @@ impl Universe {
 
             // Calculate current accelerations
             let accelerations = self.calculate_gravitational_accelerations();
-
-            if accelerations.iter().any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan())) {
+            // prettier-ignore
+            if accelerations.iter().any(|acc| acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan()) {
                 return 1;
             }
 
@@ -501,11 +526,11 @@ impl Universe {
                     .map(|p| p.vel)
                     .collect::<Vec<_>>()
             );
-
+            // prettier-ignore
             if
                 new_accelerations
                     .iter()
-                    .any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan()))
+                    .any(|acc| acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan())
             {
                 return 1;
             }
@@ -533,7 +558,8 @@ impl Universe {
             let accelerations = self.calculate_gravitational_accelerations();
 
             // Check for NaN before updating
-            if accelerations.iter().any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan())) {
+            // prettier-ignore
+            if accelerations.iter().any(|acc| acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan()) {
                 return 1;
             }
 
@@ -566,11 +592,11 @@ impl Universe {
                 &new_positions,
                 &velocities_half
             );
-
+            // prettier-ignore
             if
                 new_accelerations
                     .iter()
-                    .any(|acc| (acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan()))
+                    .any(|acc| acc.x.is_nan() || acc.y.is_nan() || acc.z.is_nan())
             {
                 return 1;
             }
@@ -630,7 +656,7 @@ impl Universe {
                     let distance = f64::sqrt(distance_squared);
 
                     // Avoid division by zero and singularities
-                    if distance > 1e-10 {
+                    if distance > 1e-4 {
                         // Gravitational force magnitude: F = G * m1 * m2 / r^2
                         let force_magnitude = (self.gravity * mass_i * mass_j) / distance_squared;
 
@@ -725,8 +751,7 @@ impl Universe {
         mass: f64,
         color: u32
     ) {
-        let mut planet = Planet::new(px, py, pz, radius, mass, color);
-        planet.vel = Vec3::new(vx, vy, vz);
+        let planet = Planet::new(px, py, pz, radius, mass, color, vx, vy, vz);
         self.planets.push(planet);
         self.update_initial_energy();
     }
@@ -737,11 +762,12 @@ impl Universe {
         colors[rand::rng().random_range(0..colors.len())]
     }
     pub fn add_planet_simple(&mut self, px: f64, py: f64, pz: f64) {
-        let default_mass = 10.0;
         let default_color = Self::random_color();
-        let default_radius = 10;
+        let default_radius = 1;
 
-        self.planets.push(Planet::new(px, py, pz, default_radius, default_mass, default_color));
+        self.planets.push(
+            Planet::new_simple(px, py, pz, default_radius, self.default_mass, default_color)
+        );
         self.update_initial_energy();
     }
     pub fn remove_planet(&mut self) {
