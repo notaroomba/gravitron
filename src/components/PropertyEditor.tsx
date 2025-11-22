@@ -7,6 +7,7 @@ export default function PropertyEditor() {
     universe,
     selectedplanetIndex,
     isPropertyEditorOpen,
+    setSelectedplanetIndex,
     setIsPropertyEditorOpen,
     render,
     setRender,
@@ -38,11 +39,21 @@ export default function PropertyEditor() {
     y: "0.00",
     z: "0.00",
   });
+  const [velocityValues, setVelocityValues] = useState({
+    x: "0.00",
+    y: "0.00",
+    z: "0.00",
+  });
 
   // Error states
   const [massError, setMassError] = useState("");
   const [radiusError, setRadiusError] = useState("");
   const [positionErrors, setPositionErrors] = useState({
+    x: "",
+    y: "",
+    z: "",
+  });
+  const [velocityErrors, setVelocityErrors] = useState({
     x: "",
     y: "",
     z: "",
@@ -66,6 +77,13 @@ export default function PropertyEditor() {
           x: planet.pos.x.toFixed(2),
           y: planet.pos.y.toFixed(2),
           z: planet.pos.z.toFixed(2),
+        });
+      }
+      if (!isEditing || !isEditing.includes("velocity")) {
+        setVelocityValues({
+          x: planet.vel.x.toFixed(2),
+          y: planet.vel.y.toFixed(2),
+          z: planet.vel.z.toFixed(2),
         });
       }
     }
@@ -118,6 +136,16 @@ export default function PropertyEditor() {
       case "position":
         if (typeof value === "object") {
           universe.update_planet_position(
+            selectedplanetIndex,
+            value.x,
+            value.y,
+            value.z
+          );
+        }
+        break;
+      case "velocity":
+        if (typeof value === "object") {
+          universe.update_planet_velocity(
             selectedplanetIndex,
             value.x,
             value.y,
@@ -204,6 +232,30 @@ export default function PropertyEditor() {
     }
   };
 
+  const handleVelocityChange = (axis: "x" | "y" | "z", value: string) => {
+    setIsEditing(`velocity-${axis}`);
+    setVelocityValues((prev) => ({ ...prev, [axis]: value }));
+    setVelocityErrors((prev) => ({ ...prev, [axis]: "" }));
+
+    if (value === "" || value === "-") return;
+
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) {
+      setVelocityErrors((prev) => ({
+        ...prev,
+        [axis]: "Please enter a valid number",
+      }));
+    } else {
+      // Update the velocity with current values plus the new axis value
+      const currentVel = {
+        x: axis === "x" ? numValue : parseFloat(velocityValues.x) || 0,
+        y: axis === "y" ? numValue : parseFloat(velocityValues.y) || 0,
+        z: axis === "z" ? numValue : parseFloat(velocityValues.z) || 0,
+      };
+      handlePropertyUpdate("velocity", currentVel);
+    }
+  };
+
   if (!isPropertyEditorOpen || !planet) return null;
 
   return (
@@ -250,8 +302,11 @@ export default function PropertyEditor() {
           </h2>
         </div>
         <button
-          onClick={() => setIsPropertyEditorOpen(false)}
-          className="p-1 hover:bg-gray-200 rounded transition-all duration-200"
+          onClick={() => {
+            setIsPropertyEditorOpen(false);
+            setSelectedplanetIndex(null);
+          }}
+          className="p-1 hover:bg-gray-200 cursor-pointer rounded transition-all duration-200"
         >
           <X className="w-5 h-5 text-gray-600" />
         </button>
@@ -342,7 +397,7 @@ export default function PropertyEditor() {
               <span className="text-xs text-red-600">{positionErrors.x}</span>
             )}
             {!positionErrors.x && (
-              <span className="text-xs text-gray-500">px</span>
+              <span className="text-xs text-gray-500">m</span>
             )}
           </div>
 
@@ -365,7 +420,7 @@ export default function PropertyEditor() {
               <span className="text-xs text-red-600">{positionErrors.y}</span>
             )}
             {!positionErrors.y && (
-              <span className="text-xs text-gray-500">px</span>
+              <span className="text-xs text-gray-500">m</span>
             )}
           </div>
 
@@ -388,7 +443,83 @@ export default function PropertyEditor() {
               <span className="text-xs text-red-600">{positionErrors.z}</span>
             )}
             {!positionErrors.z && (
-              <span className="text-xs text-gray-500">px</span>
+              <span className="text-xs text-gray-500">m</span>
+            )}
+          </div>
+        </div>
+
+        {/* Velocity */}
+        <div className="space-y-3">
+          <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+            Velocity:
+          </label>
+
+          {/* X Velocity */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-gray-600">X:</label>
+            <input
+              type="text"
+              value={velocityValues.x}
+              onChange={(e) => handleVelocityChange("x", e.target.value)}
+              onBlur={() => setIsEditing(null)}
+              className={`w-full px-3 py-2 text-base border rounded-md focus:outline-none focus:ring-2 ${
+                velocityErrors.x
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
+              placeholder="X velocity"
+            />
+            {velocityErrors.x && (
+              <span className="text-xs text-red-600">{velocityErrors.x}</span>
+            )}
+            {!velocityErrors.x && (
+              <span className="text-xs text-gray-500">m/s</span>
+            )}
+          </div>
+
+          {/* Y Velocity */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-gray-600">Y:</label>
+            <input
+              type="text"
+              value={velocityValues.y}
+              onChange={(e) => handleVelocityChange("y", e.target.value)}
+              onBlur={() => setIsEditing(null)}
+              className={`w-full px-3 py-2 text-base border rounded-md focus:outline-none focus:ring-2 ${
+                velocityErrors.y
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
+              placeholder="Y velocity"
+            />
+            {velocityErrors.y && (
+              <span className="text-xs text-red-600">{velocityErrors.y}</span>
+            )}
+            {!velocityErrors.y && (
+              <span className="text-xs text-gray-500">m/s</span>
+            )}
+          </div>
+
+          {/* Z Velocity */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-gray-600">Z:</label>
+            <input
+              type="text"
+              value={velocityValues.z}
+              onChange={(e) => handleVelocityChange("z", e.target.value)}
+              onBlur={() => setIsEditing(null)}
+              className={`w-full px-3 py-2 text-base border rounded-md focus:outline-none focus:ring-2 ${
+                velocityErrors.z
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
+              }`}
+              placeholder="Z velocity"
+            />
+            {velocityErrors.z && (
+              <span className="text-xs text-red-600">{velocityErrors.z}</span>
+            )}
+            {!velocityErrors.z && (
+              <span className="text-xs text-gray-500">m/s</span>
             )}
           </div>
         </div>

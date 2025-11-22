@@ -14,11 +14,7 @@ export default function TrailMesh({ trail }: TrailMeshProps) {
     () =>
       trail.map(
         (point) =>
-          [point.pos.x / 100, point.pos.y / 100, point.pos.z / 100] as [
-            number,
-            number,
-            number
-          ]
+          [point.pos.x, point.pos.y, point.pos.z] as [number, number, number]
       ),
     [trail]
   );

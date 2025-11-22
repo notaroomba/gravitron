@@ -95,7 +95,7 @@ pub struct Planet {
     pub vel: Vec3,
     pub acc: Vec3,
     trail: Vec<Trail>,
-    pub radius: i32,
+    pub radius: f32,
     pub mass: f64,
     pub color: u32,
 }
@@ -106,7 +106,7 @@ impl Planet {
         px: f64,
         py: f64,
         pz: f64,
-        radius: i32,
+        radius: f32,
         mass: f64,
         color: u32,
         vx: f64,
@@ -124,7 +124,7 @@ impl Planet {
         }
     }
 
-    pub fn new_simple(px: f64, py: f64, pz: f64, radius: i32, mass: f64, color: u32) -> Planet {
+    pub fn new_simple(px: f64, py: f64, pz: f64, radius: f32, mass: f64, color: u32) -> Planet {
         Planet {
             pos: Vec3::new(px, py, pz),
             vel: Vec3::new(0.0, 0.0, 0.0),
@@ -182,10 +182,11 @@ impl Universe {
         // panic::set_hook(Box::new(console_error_panic_hook::hook));
         // wasm_logger::init(wasm_logger::Config::default());
         // log::info!("Universe Init!");
-        //init - Closer 3-body system (moved ~20 units closer to origin)
-        let planet1 = Planet::new(-80.0, 0.0, -60.0, 1, 50000.0, 0xff0000, 0.0, 150.0, -30.0);
-        let planet2 = Planet::new(30.0, 67.0, 70.0, 1, 50000.0, 0x0000ff, -130.0, -7.5, 10.0);
-        let planet3 = Planet::new(30.0, -67.0, 12.0, 1, 50000.0, 0x00ff00, 130.0, -7.5, 25.0);
+        //init - Closer 3-body system (scaled for rendering)
+        // Positions scaled by /100, radius scaled by /10 for better 3D rendering
+        let planet1 = Planet::new(-0.8, 0.0, -0.6, 0.1, 1.0, 0xff0000, 0.0, 1.0, -2.0);
+        let planet2 = Planet::new(0.3, 0.6, 0.7, 0.1, 1.0, 0x0000ff, -1.3, -0.075, 0.1);
+        let planet3 = Planet::new(0.6, -0.6, 0.1, 0.1, 1.0, 0x00ff00, 1.3, -0.075, 0.25);
         let mut universe = Universe {
             planets: vec![planet1, planet2, planet3],
             gravity: 6.6743e1,
@@ -231,7 +232,6 @@ impl Universe {
         }
 
         // Add trail points only once per frame (not per substep)
-        // Ensure trail points are added after all physics calculations are complete
         if self.show_trails {
             for planet in &mut self.planets {
                 planet.add_trail_point(planet.pos, planet.color, 250);
@@ -747,7 +747,7 @@ impl Universe {
         vx: f64,
         vy: f64,
         vz: f64,
-        radius: i32,
+        radius: f32,
         mass: f64,
         color: u32
     ) {
@@ -763,7 +763,7 @@ impl Universe {
     }
     pub fn add_planet_simple(&mut self, px: f64, py: f64, pz: f64) {
         let default_color = Self::random_color();
-        let default_radius = 1;
+        let default_radius = 1.0;
 
         self.planets.push(
             Planet::new_simple(px, py, pz, default_radius, self.default_mass, default_color)
@@ -812,7 +812,7 @@ impl Universe {
         }
     }
 
-    pub fn update_planet_radius(&mut self, index: usize, radius: i32) {
+    pub fn update_planet_radius(&mut self, index: usize, radius: f32) {
         if index < self.planets.len() {
             self.planets[index].radius = radius;
         }

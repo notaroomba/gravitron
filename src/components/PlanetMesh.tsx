@@ -1,11 +1,11 @@
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import {
   Sphere,
   Float,
   MeshWobbleMaterial,
-  TransformControls,
+  PivotControls,
 } from "@react-three/drei";
-import { Color, Group } from "three";
+import { Color, Group, Matrix4, Vector3, Quaternion } from "three";
 import type { Planet } from "physics-engine";
 
 interface PlanetMeshProps {
@@ -14,6 +14,7 @@ interface PlanetMeshProps {
   isHovered: boolean;
   onClick: () => void;
   onPositionChange?: (x: number, y: number, z: number) => void;
+  onVelocityChange?: (x: number, y: number, z: number) => void;
   isPaused: boolean;
   isClickable?: boolean;
 }
@@ -24,41 +25,101 @@ export default function PlanetMesh({
   isHovered,
   onClick,
   onPositionChange,
+  onVelocityChange,
   isPaused,
   isClickable = true,
 }: PlanetMeshProps) {
-  const scale = planet.radius / 10; // Scale based on radius
+  const scale = planet.radius; // Use radius directly (already scaled in Rust)
   const color = useMemo(() => new Color(planet.color), [planet.color]);
   const groupRef = useRef<Group>(null!);
+  const pivotRef = useRef<any>(null!);
+  const isDraggingRef = useRef<boolean>(false);
+  const [offset, setOffset] = useState<[number, number, number]>([
+    planet.pos.x,
+    planet.pos.y,
+    planet.pos.z,
+  ]);
 
-  // Set initial position when TransformControls becomes active
+  // Set initial position when controls become active (but not during dragging)
   useEffect(() => {
-    if (isSelected && isPaused && groupRef.current) {
-      groupRef.current.position.set(
-        planet.pos.x / 100,
-        planet.pos.y / 100,
-        planet.pos.z / 100
-      );
+    if (isSelected && isPaused && groupRef.current && !isDraggingRef.current) {
+      groupRef.current.position.set(planet.pos.x, planet.pos.y, planet.pos.z);
     }
   }, [isSelected, isPaused, planet.pos.x, planet.pos.y, planet.pos.z]);
+  useEffect(() => {
+    setOffset([planet.pos.x, planet.pos.y, planet.pos.z]);
+  }, [isSelected, isPaused]);
+  const handleDragStart = () => {
+    isDraggingRef.current = true;
+  };
+
+  const handleDragEnd = () => {
+    isDraggingRef.current = false;
+
+    // Update final position when drag ends
+    if (onPositionChange && groupRef.current) {
+      const pos = groupRef.current.position;
+      onPositionChange(pos.x, pos.y, pos.z);
+    }
+  };
+
+  // Handle position and velocity changes through pivot control manipulation
+  const handlePivotDrag = (matrix: Matrix4) => {
+    if (!groupRef.current) return;
+
+    // Extract position, rotation, and scale from the transformation matrix
+    const position = new Vector3();
+    const quaternion = new Quaternion();
+    const scale = new Vector3();
+    matrix.decompose(position, quaternion, scale);
+    if (onPositionChange) {
+      onPositionChange(position.x, position.y, position.z);
+    }
+    // Don't update position during drag - only on drag end to prevent feedback loop
+
+    // Calculate new velocity based on rotation of current velocity vector
+    if (onVelocityChange) {
+      // Create velocity vector from current velocity
+      const currentVelocity = new Vector3(
+        planet.vel.x,
+        planet.vel.y,
+        planet.vel.z
+      );
+
+      // Apply the rotation to the velocity vector
+      // This rotates the velocity direction based on the pivot rotation
+      currentVelocity.applyQuaternion(quaternion);
+
+      // Update velocity with rotated values
+      onVelocityChange(currentVelocity.x, currentVelocity.y, currentVelocity.z);
+    }
+  };
 
   const planetGroup = (
     <group
       ref={groupRef}
       position={
         isSelected && isPaused
-          ? [0, 0, 0] // Position will be set by useEffect and controlled by TransformControls
-          : [planet.pos.x / 100, planet.pos.y / 100, planet.pos.z / 100]
+          ? [0, 0, 0] // Position will be set by useEffect and controlled by PivotControls
+          : [planet.pos.x, planet.pos.y, planet.pos.z]
       }
       onClick={isClickable ? onClick : undefined}
-      onPointerOver={isClickable ? (e) => {
-        e.stopPropagation();
-        document.body.style.cursor = "pointer";
-      } : undefined}
-      onPointerOut={isClickable ? (e) => {
-        e.stopPropagation();
-        document.body.style.cursor = "default";
-      } : undefined}
+      onPointerOver={
+        isClickable
+          ? (e) => {
+              e.stopPropagation();
+              document.body.style.cursor = "pointer";
+            }
+          : undefined
+      }
+      onPointerOut={
+        isClickable
+          ? (e) => {
+              e.stopPropagation();
+              document.body.style.cursor = "default";
+            }
+          : undefined
+      }
     >
       {/* Planet sphere using Drei */}
       <Sphere args={[scale, 32, 32]} castShadow receiveShadow>
@@ -102,24 +163,22 @@ export default function PlanetMesh({
       floatIntensity={isSelected ? 0 : 0.05}
     >
       {isSelected && isPaused ? (
-        <TransformControls
-          mode="translate"
-          makeDefault
-          object={groupRef}
-          onObjectChange={() => {
-            console.log("TransformControls onObjectChange triggered");
-            // Handle position changes when drag is complete
-            if (onPositionChange && groupRef.current) {
-              const pos = groupRef.current.position;
-              const physicsX = pos.x * 100;
-              const physicsY = pos.y * 100;
-              const physicsZ = pos.z * 100;
-              onPositionChange(physicsX, physicsY, physicsZ);
-            }
-          }}
-        />
-      ) : null}
-      {planetGroup}
+        <PivotControls
+          ref={pivotRef}
+          offset={offset}
+          onDrag={handlePivotDrag}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          depthTest={false}
+          lineWidth={2}
+          disableScaling
+          scale={1}
+        >
+          {planetGroup}
+        </PivotControls>
+      ) : (
+        planetGroup
+      )}
     </Float>
   );
 }

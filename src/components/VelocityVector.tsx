@@ -22,20 +22,20 @@ export default function VelocityVector({
       planet.vel.z * planet.vel.z
   );
 
-  if (velocityMagnitude < 1) return null; // Adjusted threshold for smaller scale
+  if (velocityMagnitude < 0.01) return null; // Adjusted threshold for new coordinate system
 
   const { startPoint, endPoint, direction } = useMemo(() => {
-    // Reduce scale to make arrows smaller and more proportional
-    const scale = 0.01; // Much smaller scale for better proportions
-    const start = [
-      planet.pos.x / 100,
-      planet.pos.y / 100,
-      planet.pos.z / 100,
-    ] as [number, number, number];
+    // Scale for velocity vectors (since coordinates are now already scaled)
+    const scale = 1.0; // Adjusted for new coordinate system
+    const start = [planet.pos.x, planet.pos.y, planet.pos.z] as [
+      number,
+      number,
+      number
+    ];
     const end = [
-      planet.pos.x / 100 + planet.vel.x * scale,
-      planet.pos.y / 100 + planet.vel.y * scale,
-      planet.pos.z / 100 + planet.vel.z * scale,
+      planet.pos.x + planet.vel.x * scale,
+      planet.pos.y + planet.vel.y * scale,
+      planet.pos.z + planet.vel.z * scale,
     ] as [number, number, number];
 
     const dir = new Vector3()
@@ -71,7 +71,7 @@ export default function VelocityVector({
       {/* Arrow head using Drei Cone */}
       <Cone
         ref={arrowRef}
-        args={[0.015, 0.08, 8]} // Smaller arrow head to match scaled vectors
+        args={[0.03, 0.15, 8]} // Bigger arrow head for better visibility
         position={endPoint}
       >
         <meshBasicMaterial color="#4a5568" />
