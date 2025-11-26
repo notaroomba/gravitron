@@ -32,8 +32,11 @@ export default function PlanetMesh({
   const scale = planet.radius; // Use radius directly (already scaled in Rust)
   const color = useMemo(() => new Color(planet.color), [planet.color]);
   const groupRef = useRef<Group>(null!);
+  const [updatedPosition, setUpdatedPosition] = useState<Vector3>(
+    new Vector3(planet.pos.x, planet.pos.y, planet.pos.z)
+  );
   const pivotRef = useRef<any>(null!);
-  const isDraggingRef = useRef<boolean>(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [offset, setOffset] = useState<[number, number, number]>([
     planet.pos.x,
     planet.pos.y,
@@ -42,24 +45,30 @@ export default function PlanetMesh({
 
   // Set initial position when controls become active (but not during dragging)
   useEffect(() => {
-    if (isSelected && isPaused && groupRef.current && !isDraggingRef.current) {
-      groupRef.current.position.set(planet.pos.x, planet.pos.y, planet.pos.z);
+    if (isSelected && isPaused && groupRef.current && !isDragging) {
+      console.log("Setting initial position for pivot controls");
+      groupRef.current.position.set(offset[0], offset[1], offset[2]);
     }
   }, [isSelected, isPaused, planet.pos.x, planet.pos.y, planet.pos.z]);
   useEffect(() => {
     setOffset([planet.pos.x, planet.pos.y, planet.pos.z]);
   }, [isSelected, isPaused]);
   const handleDragStart = () => {
-    isDraggingRef.current = true;
+    setIsDragging(true);
   };
 
   const handleDragEnd = () => {
-    isDraggingRef.current = false;
+    console.log(updatedPosition);
+    setIsDragging(false);
 
     // Update final position when drag ends
     if (onPositionChange && groupRef.current) {
-      const pos = groupRef.current.position;
-      onPositionChange(pos.x, pos.y, pos.z);
+      console.log("Updated position to:", updatedPosition);
+      onPositionChange(
+        planet.pos.x + updatedPosition.x,
+        planet.pos.y + updatedPosition.y,
+        planet.pos.z + updatedPosition.z
+      );
     }
   };
 
@@ -73,7 +82,9 @@ export default function PlanetMesh({
     const scale = new Vector3();
     matrix.decompose(position, quaternion, scale);
     if (onPositionChange) {
-      onPositionChange(position.x, position.y, position.z);
+      // onPositionChange(position.x, position.y, position.z);
+      setUpdatedPosition(position);
+      console.log("Updating position to:", position);
     }
     // Don't update position during drag - only on drag end to prevent feedback loop
 
@@ -98,11 +109,7 @@ export default function PlanetMesh({
   const planetGroup = (
     <group
       ref={groupRef}
-      position={
-        isSelected && isPaused
-          ? [0, 0, 0] // Position will be set by useEffect and controlled by PivotControls
-          : [planet.pos.x, planet.pos.y, planet.pos.z]
-      }
+      position={[planet.pos.x, planet.pos.y, planet.pos.z]}
       onClick={isClickable ? onClick : undefined}
       onPointerOver={
         isClickable
@@ -172,6 +179,7 @@ export default function PlanetMesh({
           depthTest={false}
           lineWidth={2}
           disableScaling
+          disableRotations
           scale={1}
         >
           {planetGroup}
