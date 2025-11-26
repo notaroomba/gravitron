@@ -81,6 +81,68 @@ impl ops::Div<f64> for Vec3 {
     }
 }
 
+// Vec2 for quadtree (2D only)
+#[wasm_bindgen]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Copy, Default)]
+pub struct Vec2 {
+    pub x: f64,
+    pub y: f64,
+}
+#[wasm_bindgen]
+impl Vec2 {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: f64, y: f64) -> Self {
+        Self { x, y }
+    }
+    pub fn distance_from(&self, other: Vec2) -> f64 {
+        f64::sqrt(f64::powi(self.x - other.x, 2) + f64::powi(self.y - other.y, 2))
+    }
+}
+impl ops::Add for Vec2 {
+    type Output = Vec2;
+    fn add(self, rhs: Self) -> Self::Output {
+        Vec2 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+impl ops::Sub for Vec2 {
+    type Output = Vec2;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Vec2 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+impl ops::AddAssign for Vec2 {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        };
+    }
+}
+impl ops::DivAssign<f64> for Vec2 {
+    fn div_assign(&mut self, d: f64) {
+        self.x /= d;
+        self.y /= d;
+    }
+}
+impl ops::Mul<f64> for Vec2 {
+    type Output = Self;
+    fn mul(self, m: f64) -> Self {
+        Self::new(self.x * m, self.y * m)
+    }
+}
+impl ops::Div<f64> for Vec2 {
+    type Output = Self;
+    fn div(self, m: f64) -> Self {
+        Self::new(self.x / m, self.y / m)
+    }
+}
+
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct Trail {
@@ -152,6 +214,112 @@ impl Planet {
 }
 
 #[wasm_bindgen]
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct QuadTreeNode {
+    mass: f64,
+    center_of_mass: Vec2,
+    dimensions: Vec2,
+    center: Vec2,
+    children: Option<[Box<QuadTreeNode>; 4]>,
+    planets: Vec<Planet>,
+}
+
+// Implement methods for the QuadTreeNode
+#[wasm_bindgen]
+impl QuadTreeNode {
+    fn new(dimensions: Vec2, center: Vec2) -> QuadTreeNode {
+        QuadTreeNode {
+            mass: 0.0,
+            center_of_mass: Vec2::new(0.0, 0.0),
+            dimensions,
+            center,
+            children: None,
+            planets: Vec::with_capacity(2),
+        }
+    }
+
+    fn add_planet(&mut self, planet: &Planet) {
+        if self.children.is_none() {
+            self.planets.push(planet.clone());
+            if self.planets.len() > 1 {
+                self.subdivide();
+            }
+        } else {
+            let quadrant: usize = self.get_quadrant(&Vec2::new(planet.pos.x, planet.pos.y));
+            if let Some(children) = &mut self.children {
+                children[quadrant].add_planet(planet);
+            }
+        }
+    }
+
+    fn subdivide(&mut self) {
+        if self.planets.is_empty() {
+            return;
+        }
+        let new_dimensions: Vec2 = Vec2::new(self.dimensions.x / 2.0, self.dimensions.y / 2.0);
+        let child_centers: [Vec2; 4] = [
+            self.center + Vec2::new(new_dimensions.x / 2.0, new_dimensions.y / 2.0),
+            self.center + Vec2::new(-new_dimensions.x / 2.0, new_dimensions.y / 2.0),
+            self.center + Vec2::new(-new_dimensions.x / 2.0, -new_dimensions.y / 2.0),
+            self.center + Vec2::new(new_dimensions.x / 2.0, -new_dimensions.y / 2.0),
+        ];
+        let mut children: [Box<QuadTreeNode>; 4] = Default::default();
+        for i in 0..4 {
+            children[i] = Box::new(QuadTreeNode::new(new_dimensions, child_centers[i]));
+        }
+        for planet in &self.planets {
+            let quadrant: usize = self.get_quadrant(&Vec2::new(planet.pos.x, planet.pos.y));
+            children[quadrant].add_planet(planet);
+        }
+        self.children = Some(children);
+        self.planets.clear();
+    }
+
+    fn get_quadrant(&self, position: &Vec2) -> usize {
+        if position.x >= self.center.x && position.y >= self.center.y {
+            0
+        } else if position.x <= self.center.x && position.y >= self.center.y {
+            1
+        } else if position.x <= self.center.x && position.y <= self.center.y {
+            2
+        } else {
+            3
+        }
+    }
+
+    fn update_center_of_mass(&mut self) {
+        if self.planets.len() == 1 {
+            self.mass = self.planets[0].mass;
+            self.center_of_mass = Vec2::new(self.planets[0].pos.x, self.planets[0].pos.y);
+        } else if let Some(children) = &mut self.children {
+            for child in children.iter_mut() {
+                child.update_center_of_mass();
+                self.mass += child.mass;
+                self.center_of_mass += child.center_of_mass * child.mass;
+            }
+            if self.mass > 0.0 {
+                self.center_of_mass /= self.mass;
+            }
+        } else {
+            self.mass = 0.0;
+            self.center_of_mass = Vec2::new(0.0, 0.0);
+        }
+    }
+
+    fn rebuild(&mut self, planets: &Vec<Planet>, dimensions: Vec2, center: Vec2) {
+        *self = QuadTreeNode::new(dimensions, center);
+        for planet in planets {
+            self.add_planet(planet);
+        }
+        self.update_center_of_mass();
+    }
+
+    pub fn get_data(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self).unwrap()
+    }
+}
+
+#[wasm_bindgen]
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum Implementation {
     Euler,
@@ -170,10 +338,11 @@ pub struct Universe {
     is_paused: bool,
     implementation: Implementation,
     speed: f64,
-    max_planets: usize,
-    initial_energy: f64,
     default_mass: f64,
-    limit_total_energy: bool,
+    use_quadtree: bool,
+    quadtree_theta: f64,
+    quadtree: QuadTreeNode,
+    quadtree_threshold: usize, // Minimum planets to use quadtree
 }
 #[wasm_bindgen]
 impl Universe {
@@ -217,22 +386,20 @@ impl Universe {
             -15.0,
             50.0
         );
-        let mut universe = Universe {
+        let universe = Universe {
             planets: vec![planet1, planet2, planet3],
             gravity: 6.6743e3,
             implementation: Implementation::Euler,
             speed: 1.0 / 20.0,
             mass_calculation: true,
             show_trails: true,
-            max_planets: 100,
             is_paused: false,
-            initial_energy: 0.0, // Will be calculated next
             default_mass: 100000.0, // Default mass used when mass_calculation is false
-            limit_total_energy: false, // Enable energy limiting off by default
+            use_quadtree: false,
+            quadtree_theta: 0.5,
+            quadtree: QuadTreeNode::new(Vec2::new(2000.0, 2000.0), Vec2::new(0.0, 0.0)),
+            quadtree_threshold: 150, // Use quadtree when 150+ planets
         };
-        // Calculate initial total energy (potential + kinetic)
-        universe.initial_energy =
-            universe.calculate_potential_energy() + universe.calculate_kinetic_energy();
         universe
     }
     pub fn time_step(&mut self, dt: f64) -> u8 {
@@ -240,10 +407,7 @@ impl Universe {
             return 1;
         }
 
-        if self.planets.len() > self.max_planets {
-            // cutoff for Euler method, remove extras
-            self.planets.truncate(self.max_planets);
-        }
+        // Removed max_planets limit - no truncation
 
         // Calculate the effective speed multiplier
         let speed_multiplier = self.speed * 2.0;
@@ -270,91 +434,14 @@ impl Universe {
         return 0;
     }
 
-    // Calculate total potential energy of the system
-    // U = -G * sum_i(sum_j>i(m_i * m_j / r_ij))
-    fn calculate_potential_energy(&self) -> f64 {
-        let mut potential = 0.0;
-
-        // Calculate gravitational potential energy between all pairs of planets
-        for i in 0..self.planets.len() {
-            for j in i + 1..self.planets.len() {
-                let mass_i = if self.mass_calculation {
-                    self.planets[i].mass
-                } else {
-                    self.default_mass
-                };
-                let mass_j = if self.mass_calculation {
-                    self.planets[j].mass
-                } else {
-                    self.default_mass
-                };
-
-                let distance = self.planets[i].pos.distance_from(self.planets[j].pos);
-
-                // Avoid division by zero
-                if distance > 0.0 {
-                    // Gravitational potential energy: -G * m1 * m2 / r
-                    // Note: Using self.gravity as the gravitational constant here
-                    potential -= (self.gravity * mass_i * mass_j) / distance;
-                }
-            }
-        }
-
-        potential
-    }
-
-    // Calculate total kinetic energy of the system
-    // KE = 0.5 * sum_i(m_i * v_i^2)
-    fn calculate_kinetic_energy(&self) -> f64 {
-        let mut kinetic = 0.0;
-
-        for i in 0..self.planets.len() {
-            let mass = if self.mass_calculation { self.planets[i].mass } else { self.default_mass };
-
-            // Kinetic energy: 0.5 * m * v^2
-            let v_squared =
-                self.planets[i].vel.x * self.planets[i].vel.x +
-                self.planets[i].vel.y * self.planets[i].vel.y +
-                self.planets[i].vel.z * self.planets[i].vel.z;
-
-            kinetic += 0.5 * mass * v_squared;
-        }
-
-        kinetic
-    }
-
-    // Constrain velocities based on energy conservation
-    fn constrain_velocities(&mut self, initial_energy: f64) {
-        let current_potential = self.calculate_potential_energy();
-        let max_kinetic = initial_energy - current_potential;
-
-        // If we have negative kinetic energy, we have a problem
-        if max_kinetic < 0.0 {
-            return;
-        }
-
-        let current_kinetic = self.calculate_kinetic_energy();
-
-        // If kinetic energy exceeds what's possible, scale down velocities
-        if current_kinetic > max_kinetic && current_kinetic > 0.0 {
-            let scale_factor = f64::sqrt(max_kinetic / current_kinetic);
-            for i in 0..self.planets.len() {
-                self.planets[i].vel.x *= scale_factor;
-                self.planets[i].vel.y *= scale_factor;
-                self.planets[i].vel.z *= scale_factor;
-            }
-        }
-    }
-
-    // Recalculate and store the initial energy (call after modifying the system)
-    fn update_initial_energy(&mut self) {
-        self.initial_energy = self.calculate_potential_energy() + self.calculate_kinetic_energy();
-    }
-
     fn single_physics_step(&mut self, dt: f64) -> u8 {
         if self.implementation == Implementation::Euler {
             // Calculate gravitational accelerations for all planets
-            let accelerations = self.calculate_gravitational_accelerations();
+            let accelerations = if self.use_quadtree {
+                self.calculate_gravitational_accelerations_quadtree()
+            } else {
+                self.calculate_gravitational_accelerations()
+            };
 
             // Check for NaN before updating
             // prettier-ignore
@@ -643,11 +730,6 @@ impl Universe {
             }
         }
 
-        // Apply energy conservation constraint to prevent unbounded energy growth (if enabled)
-        if self.limit_total_energy {
-            self.constrain_velocities(self.initial_energy);
-        }
-
         return 0;
     }
     // Calculate gravitational accelerations for a given set of planet positions and masses
@@ -705,6 +787,94 @@ impl Universe {
                     }
                 }
             }
+        }
+
+        accelerations
+    }
+
+    // Calculate acceleration from a quadtree node (Barnes-Hut approximation)
+    fn acceleration_from_quad(
+        &self,
+        planet_pos: Vec2,
+        planet_mass: f64,
+        quad: &QuadTreeNode
+    ) -> Vec2 {
+        if quad.mass == 0.0 {
+            return Vec2::new(0.0, 0.0);
+        }
+
+        let dx = quad.center_of_mass.x - planet_pos.x;
+        let dy = quad.center_of_mass.y - planet_pos.y;
+        let distance = f64::sqrt(dx * dx + dy * dy);
+
+        if distance < 1e-10 {
+            return Vec2::new(0.0, 0.0);
+        }
+
+        // Calculate the ratio: size / distance
+        let size = f64::max(quad.dimensions.x, quad.dimensions.y);
+        let ratio = size / distance;
+
+        // If ratio < theta, treat as single body (Barnes-Hut criterion)
+        if ratio < self.quadtree_theta || quad.children.is_none() {
+            // Calculate gravitational acceleration: a = G * m / r²
+            let distance_squared = distance * distance;
+            let force_magnitude = (self.gravity * quad.mass) / distance_squared;
+
+            // Unit vector from planet to quad center of mass
+            let unit_x = dx / distance;
+            let unit_y = dy / distance;
+
+            Vec2::new(force_magnitude * unit_x, force_magnitude * unit_y)
+        } else {
+            // Recursively calculate from children
+            let mut acc = Vec2::new(0.0, 0.0);
+            if let Some(children) = &quad.children {
+                for child in children.iter() {
+                    acc += self.acceleration_from_quad(planet_pos, planet_mass, child);
+                }
+            }
+            acc
+        }
+    }
+
+    // Calculate gravitational accelerations using quadtree (Barnes-Hut)
+    fn calculate_gravitational_accelerations_quadtree(&mut self) -> Vec<Vec3> {
+        let n = self.planets.len();
+        let mut accelerations = vec![Vec3::new(0.0, 0.0, 0.0); n];
+
+        // Rebuild quadtree
+        let mut min = Vec2::new(f64::MAX, f64::MAX);
+        let mut max = Vec2::new(f64::MIN, f64::MIN);
+
+        for planet in &self.planets {
+            if planet.pos.x < min.x {
+                min.x = planet.pos.x;
+            }
+            if planet.pos.y < min.y {
+                min.y = planet.pos.y;
+            }
+            if planet.pos.x > max.x {
+                max.x = planet.pos.x;
+            }
+            if planet.pos.y > max.y {
+                max.y = planet.pos.y;
+            }
+        }
+
+        let dimensions = max - min;
+        let center = min + dimensions * 0.5;
+        self.quadtree.rebuild(&self.planets, dimensions, center);
+
+        // Calculate accelerations using quadtree
+        for i in 0..n {
+            let planet_pos = Vec2::new(self.planets[i].pos.x, self.planets[i].pos.y);
+            let mass = if self.mass_calculation { self.planets[i].mass } else { self.default_mass };
+
+            let acc_2d = self.acceleration_from_quad(planet_pos, mass, &self.quadtree);
+            accelerations[i].x = acc_2d.x;
+            accelerations[i].y = acc_2d.y;
+            accelerations[i].z = 0.0;
         }
 
         accelerations
@@ -783,7 +953,6 @@ impl Universe {
     ) {
         let planet = Planet::new(px, py, pz, radius, mass, color, vx, vy, vz);
         self.planets.push(planet);
-        self.update_initial_energy();
     }
 
     pub fn random_color() -> u32 {
@@ -798,11 +967,9 @@ impl Universe {
         self.planets.push(
             Planet::new_simple(px, py, pz, default_radius, self.default_mass, default_color)
         );
-        self.update_initial_energy();
     }
     pub fn remove_planet(&mut self) {
         self.planets.pop();
-        self.update_initial_energy();
     }
     pub fn get_planets(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.planets).unwrap()
@@ -818,21 +985,18 @@ impl Universe {
     pub fn update_planet_position(&mut self, index: usize, x: f64, y: f64, z: f64) {
         if index < self.planets.len() {
             self.planets[index].pos = Vec3::new(x, y, z);
-            self.update_initial_energy();
         }
     }
 
     pub fn update_planet_velocity(&mut self, index: usize, vx: f64, vy: f64, vz: f64) {
         if index < self.planets.len() {
             self.planets[index].vel = Vec3::new(vx, vy, vz);
-            self.update_initial_energy();
         }
     }
 
     pub fn update_planet_mass(&mut self, index: usize, mass: f64) {
         if index < self.planets.len() {
             self.planets[index].mass = mass;
-            self.update_initial_energy();
         }
     }
 
@@ -918,15 +1082,57 @@ impl Universe {
         self.show_trails = !self.show_trails;
     }
 
-    pub fn set_limit_total_energy(&mut self, limit_total_energy: bool) {
-        self.limit_total_energy = limit_total_energy;
+    pub fn set_use_quadtree(&mut self, use_quadtree: bool) {
+        self.use_quadtree = use_quadtree;
     }
 
-    pub fn get_limit_total_energy(&self) -> bool {
-        return self.limit_total_energy;
+    pub fn get_use_quadtree(&self) -> bool {
+        return self.use_quadtree;
     }
 
-    pub fn toggle_limit_total_energy(&mut self) {
-        self.limit_total_energy = !self.limit_total_energy;
+    pub fn toggle_use_quadtree(&mut self) {
+        self.use_quadtree = !self.use_quadtree;
+    }
+
+    pub fn set_quadtree_theta(&mut self, theta: f64) {
+        self.quadtree_theta = theta;
+    }
+
+    pub fn get_quadtree_theta(&self) -> f64 {
+        return self.quadtree_theta;
+    }
+
+    pub fn get_quadtree(&mut self) -> JsValue {
+        // Rebuild quadtree with current planet positions for visualization
+        if !self.planets.is_empty() {
+            let mut min = Vec2::new(f64::MAX, f64::MAX);
+            let mut max = Vec2::new(f64::MIN, f64::MIN);
+
+            for planet in &self.planets {
+                if planet.pos.x < min.x {
+                    min.x = planet.pos.x;
+                }
+                if planet.pos.y < min.y {
+                    min.y = planet.pos.y;
+                }
+                if planet.pos.x > max.x {
+                    max.x = planet.pos.x;
+                }
+                if planet.pos.y > max.y {
+                    max.y = planet.pos.y;
+                }
+            }
+
+            // Add some padding to the bounds
+            let padding = 100.0;
+            min = min - Vec2::new(padding, padding);
+            max = max + Vec2::new(padding, padding);
+
+            let dimensions = max - min;
+            let center = min + dimensions * 0.5;
+            self.quadtree.rebuild(&self.planets, dimensions, center);
+        }
+
+        serde_wasm_bindgen::to_value(&self.quadtree).unwrap()
     }
 }

@@ -10,6 +10,18 @@ interface SimulationContextType {
   setSelectedplanetIndex: (index: number | null) => void;
   isPropertyEditorOpen: boolean;
   setIsPropertyEditorOpen: (open: boolean) => void;
+  showMoreInfo: boolean;
+  setShowMoreInfo: (show: boolean) => void;
+  showVelocityVectors: boolean;
+  setShowVelocityVectors: (show: boolean) => void;
+  useQuadtree: boolean;
+  setUseQuadtree: (use: boolean) => void;
+  viewQuadtree: boolean;
+  setViewQuadtree: (view: boolean) => void;
+  quadtreeTheta: number;
+  setQuadtreeTheta: (theta: number) => void;
+  fps: number;
+  setFps: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(
@@ -38,6 +50,12 @@ export function SimulationProvider({
     null
   );
   const [isPropertyEditorOpen, setIsPropertyEditorOpen] = useState(false);
+  const [showMoreInfo, setShowMoreInfo] = useState(false);
+  const [showVelocityVectors, setShowVelocityVectors] = useState(false);
+  const [useQuadtree, setUseQuadtree] = useState(false);
+  const [viewQuadtree, setViewQuadtree] = useState(false);
+  const [quadtreeTheta, setQuadtreeTheta] = useState(0.5);
+  const [fps, setFps] = useState(0);
 
   return (
     <SimulationContext.Provider
@@ -49,6 +67,18 @@ export function SimulationProvider({
         setSelectedplanetIndex,
         isPropertyEditorOpen,
         setIsPropertyEditorOpen,
+        showMoreInfo,
+        setShowMoreInfo,
+        showVelocityVectors,
+        setShowVelocityVectors,
+        useQuadtree,
+        setUseQuadtree,
+        viewQuadtree,
+        setViewQuadtree,
+        quadtreeTheta,
+        setQuadtreeTheta,
+        fps,
+        setFps,
       }}
     >
       {children}

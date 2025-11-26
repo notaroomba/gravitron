@@ -48,7 +48,7 @@ const PixiCanvas = memo(function PixiCanvas({
 });
 
 function SimulationContent() {
-  const { universe } = useSimulation();
+  const { universe, showMoreInfo, fps } = useSimulation();
 
   return (
     <Transitions>
@@ -69,6 +69,16 @@ function SimulationContent() {
           </a>
         </p>
       </div>
+
+      {/* Info Overlay */}
+      {showMoreInfo && (
+        <div className="absolute top-4 right-4 bg-black/70 text-white p-4 rounded-lg text-sm font-mono space-y-1 pointer-events-none">
+          <div>FPS: {fps}</div>
+          <div>Planets: {universe.get_planet_count()}</div>
+          <div>Quadtree: {universe.get_use_quadtree() ? "ON" : "OFF"}</div>
+        </div>
+      )}
+
       <div className="absolute bottom-0 w-screen p-2 sm:p-4 pointer-events-none flex justify-center items-start">
         <SettingsBar />
       </div>

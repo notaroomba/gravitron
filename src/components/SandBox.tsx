@@ -20,12 +20,17 @@ export default function SandBox({ universe }: SandBoxProps) {
     setIsPropertyEditorOpen,
     render,
     setRender,
+    showMoreInfo,
+    showVelocityVectors,
+    viewQuadtree,
+    setFps,
   } = useSimulation();
 
   const [hoveredplanetIndex, setHoveredplanetIndex] = useState<number | null>(
     null
   );
   const [isDraggingPlanet, setIsDraggingPlanet] = useState(false);
+  const fpsCounterRef = useRef({ frames: 0, lastTime: performance.now() });
   const pixiContainerRef = useRef<any>(null);
 
   const handlePlanetDragStart = (index: number, event: any) => {
@@ -79,8 +84,8 @@ export default function SandBox({ universe }: SandBoxProps) {
         }
       }
 
-      // Draw velocity vectors when paused
-      if (isPaused) {
+      // Draw velocity vectors when showVelocityVectors is enabled
+      if (showVelocityVectors) {
         for (let i = 0; i < planets.length; i++) {
           const planet = planets[i];
           const velocityMag = Math.sqrt(
@@ -88,7 +93,7 @@ export default function SandBox({ universe }: SandBoxProps) {
           );
 
           if (velocityMag > 0.01) {
-            const velScale = 1.0;
+            const velScale = 0.05;
             const velX = planet.vel.x * velScale;
             const velY = planet.vel.y * velScale;
 
@@ -135,6 +140,37 @@ export default function SandBox({ universe }: SandBoxProps) {
         }
       }
 
+      // Draw quadtree visualization when enabled
+      if (viewQuadtree) {
+        const quadtreeData = universe.get_quadtree();
+
+        const drawQuadNode = (node: any) => {
+          if (!node) return;
+
+          // Draw the boundary of this quad
+          const halfWidth = node.dimensions.x / 2;
+          const halfHeight = node.dimensions.y / 2;
+          const left = node.center.x - halfWidth;
+          const top = node.center.y - halfHeight;
+
+          graphics.rect(left, top, node.dimensions.x, node.dimensions.y);
+          graphics.stroke({
+            width: 2,
+            color: 0x00ff00,
+            alpha: 0.6,
+          });
+
+          // Recursively draw children
+          if (node.children) {
+            for (const child of node.children) {
+              drawQuadNode(child);
+            }
+          }
+        };
+
+        drawQuadNode(quadtreeData);
+      }
+
       // Draw planets
       for (let i = 0; i < planets.length; i++) {
         const planet = planets[i];
@@ -160,10 +196,28 @@ export default function SandBox({ universe }: SandBoxProps) {
         graphics.fill({ color: planet.color, alpha: 1 });
       }
     },
-    [universe, selectedplanetIndex, hoveredplanetIndex, render]
+    [
+      universe,
+      selectedplanetIndex,
+      hoveredplanetIndex,
+      render,
+      showMoreInfo,
+      showVelocityVectors,
+      viewQuadtree,
+    ]
   );
 
   useTick((delta) => {
+    // Calculate FPS
+    const counter = fpsCounterRef.current;
+    counter.frames++;
+    const now = performance.now();
+    if (now - counter.lastTime >= 1000) {
+      setFps(Math.round((counter.frames * 1000) / (now - counter.lastTime)));
+      counter.frames = 0;
+      counter.lastTime = now;
+    }
+
     if (universe.get_is_paused()) return;
 
     setRender((prev) => prev + 1);
