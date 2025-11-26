@@ -37,12 +37,10 @@ export default function PropertyEditor() {
   const [positionValues, setPositionValues] = useState({
     x: "0.00",
     y: "0.00",
-    z: "0.00",
   });
   const [velocityValues, setVelocityValues] = useState({
     x: "0.00",
     y: "0.00",
-    z: "0.00",
   });
 
   // Error states
@@ -51,12 +49,10 @@ export default function PropertyEditor() {
   const [positionErrors, setPositionErrors] = useState({
     x: "",
     y: "",
-    z: "",
   });
   const [velocityErrors, setVelocityErrors] = useState({
     x: "",
     y: "",
-    z: "",
   });
 
   // Track if user is actively editing to prevent auto-formatting
@@ -76,14 +72,12 @@ export default function PropertyEditor() {
         setPositionValues({
           x: planet.pos.x.toFixed(2),
           y: planet.pos.y.toFixed(2),
-          z: planet.pos.z.toFixed(2),
         });
       }
       if (!isEditing || !isEditing.includes("velocity")) {
         setVelocityValues({
           x: planet.vel.x.toFixed(2),
           y: planet.vel.y.toFixed(2),
-          z: planet.vel.z.toFixed(2),
         });
       }
     }
@@ -128,7 +122,7 @@ export default function PropertyEditor() {
   // Validation and update handlers
   const handlePropertyUpdate = (
     property: string,
-    value: { x: number; y: number; z: number } | number
+    value: { x: number; y: number } | number
   ) => {
     if (selectedplanetIndex === null) return;
 
@@ -139,7 +133,7 @@ export default function PropertyEditor() {
             selectedplanetIndex,
             value.x,
             value.y,
-            value.z
+            0
           );
         }
         break;
@@ -149,7 +143,7 @@ export default function PropertyEditor() {
             selectedplanetIndex,
             value.x,
             value.y,
-            value.z
+            0
           );
         }
         break;
@@ -208,7 +202,7 @@ export default function PropertyEditor() {
     }
   };
 
-  const handlePositionChange = (axis: "x" | "y" | "z", value: string) => {
+  const handlePositionChange = (axis: "x" | "y", value: string) => {
     setIsEditing(`position-${axis}`);
     setPositionValues((prev) => ({ ...prev, [axis]: value }));
     setPositionErrors((prev) => ({ ...prev, [axis]: "" }));
@@ -226,13 +220,12 @@ export default function PropertyEditor() {
       const currentPos = {
         x: axis === "x" ? numValue : parseFloat(positionValues.x) || 0,
         y: axis === "y" ? numValue : parseFloat(positionValues.y) || 0,
-        z: axis === "z" ? numValue : parseFloat(positionValues.z) || 0,
       };
       handlePropertyUpdate("position", currentPos);
     }
   };
 
-  const handleVelocityChange = (axis: "x" | "y" | "z", value: string) => {
+  const handleVelocityChange = (axis: "x" | "y", value: string) => {
     setIsEditing(`velocity-${axis}`);
     setVelocityValues((prev) => ({ ...prev, [axis]: value }));
     setVelocityErrors((prev) => ({ ...prev, [axis]: "" }));
@@ -250,7 +243,6 @@ export default function PropertyEditor() {
       const currentVel = {
         x: axis === "x" ? numValue : parseFloat(velocityValues.x) || 0,
         y: axis === "y" ? numValue : parseFloat(velocityValues.y) || 0,
-        z: axis === "z" ? numValue : parseFloat(velocityValues.z) || 0,
       };
       handlePropertyUpdate("velocity", currentVel);
     }
@@ -423,29 +415,6 @@ export default function PropertyEditor() {
               <span className="text-xs text-gray-500">m</span>
             )}
           </div>
-
-          {/* Z Coordinate */}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">Z:</label>
-            <input
-              type="text"
-              value={positionValues.z}
-              onChange={(e) => handlePositionChange("z", e.target.value)}
-              onBlur={() => setIsEditing(null)}
-              className={`w-full px-3 py-2 text-base border rounded-md focus:outline-none focus:ring-2 ${
-                positionErrors.z
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-blue-500"
-              }`}
-              placeholder="Z position"
-            />
-            {positionErrors.z && (
-              <span className="text-xs text-red-600">{positionErrors.z}</span>
-            )}
-            {!positionErrors.z && (
-              <span className="text-xs text-gray-500">m</span>
-            )}
-          </div>
         </div>
 
         {/* Velocity */}
@@ -496,29 +465,6 @@ export default function PropertyEditor() {
               <span className="text-xs text-red-600">{velocityErrors.y}</span>
             )}
             {!velocityErrors.y && (
-              <span className="text-xs text-gray-500">m/s</span>
-            )}
-          </div>
-
-          {/* Z Velocity */}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">Z:</label>
-            <input
-              type="text"
-              value={velocityValues.z}
-              onChange={(e) => handleVelocityChange("z", e.target.value)}
-              onBlur={() => setIsEditing(null)}
-              className={`w-full px-3 py-2 text-base border rounded-md focus:outline-none focus:ring-2 ${
-                velocityErrors.z
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-blue-500"
-              }`}
-              placeholder="Z velocity"
-            />
-            {velocityErrors.z && (
-              <span className="text-xs text-red-600">{velocityErrors.z}</span>
-            )}
-            {!velocityErrors.z && (
               <span className="text-xs text-gray-500">m/s</span>
             )}
           </div>

@@ -182,14 +182,44 @@ impl Universe {
         // panic::set_hook(Box::new(console_error_panic_hook::hook));
         // wasm_logger::init(wasm_logger::Config::default());
         // log::info!("Universe Init!");
-        //init - Closer 3-body system (scaled for rendering)
-        // Positions scaled by /100, radius scaled by /10 for better 3D rendering
-        let planet1 = Planet::new(-0.8, 0.0, -0.6, 0.1, 1.0, 0xff0000, 0.0, 1.0, -2.0);
-        let planet2 = Planet::new(0.3, 0.6, 0.7, 0.1, 1.0, 0x0000ff, -1.3, -0.075, 0.1);
-        let planet3 = Planet::new(0.6, -0.6, 0.1, 0.1, 1.0, 0x00ff00, 1.3, -0.075, 0.25);
+        //init - Closer 3-body system (scaled for 2D rendering)
+        // Positions and velocities scaled by 200 for better visibility in 2D
+        let planet1 = Planet::new(
+            -160.0,
+            0.0,
+            -120.0,
+            10.0,
+            100000.0,
+            0xff0000,
+            0.0,
+            200.0,
+            -400.0
+        );
+        let planet2 = Planet::new(
+            60.0,
+            120.0,
+            140.0,
+            10.0,
+            100000.0,
+            0x0000ff,
+            -260.0,
+            -15.0,
+            20.0
+        );
+        let planet3 = Planet::new(
+            120.0,
+            -120.0,
+            20.0,
+            10.0,
+            100000.0,
+            0x00ff00,
+            260.0,
+            -15.0,
+            50.0
+        );
         let mut universe = Universe {
             planets: vec![planet1, planet2, planet3],
-            gravity: 6.6743e1,
+            gravity: 6.6743e3,
             implementation: Implementation::Euler,
             speed: 1.0 / 20.0,
             mass_calculation: true,
@@ -763,7 +793,7 @@ impl Universe {
     }
     pub fn add_planet_simple(&mut self, px: f64, py: f64, pz: f64) {
         let default_color = Self::random_color();
-        let default_radius = 1.0;
+        let default_radius = 10.0;
 
         self.planets.push(
             Planet::new_simple(px, py, pz, default_radius, self.default_mass, default_color)
