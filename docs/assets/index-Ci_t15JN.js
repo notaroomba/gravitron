@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/browserAll-cCybv7_8.js","assets/webworkerAll-Cy3672Fb.js","assets/colorToUniform-BXaCBwVl.js","assets/CanvasPool-DnnKikI5.js","assets/WebGPURenderer-DpdYtPCN.js","assets/SharedSystems-DgC8jltR.js","assets/WebGLRenderer-C1BTlQQa.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/browserAll-CBEOPSFf.js","assets/webworkerAll-D5uCjsww.js","assets/colorToUniform-BXaCBwVl.js","assets/CanvasPool-B-uKYKTm.js","assets/WebGPURenderer-CVyceVEK.js","assets/SharedSystems-gTdNfPo7.js","assets/WebGLRenderer-zl2_Y8wd.js"])))=>i.map(i=>d[i]);
 let ZS, j2, ki, fi, Xr, be, ou, Xm, $S, _a, l2, ex, ud, ue, E6, V6, oe, sn, d0, B6, Yf, c0, nn, ez, ix, cg, sx, i6, al, Ui, e6, n2, G2, ve, hn, lz, Cz, bz, Zz, Wz, tR, nR, iR, d_, Lr, Om, Bm, zc, J2, bx, vx, yd, M4, tT, _z, pd, Mm, Ji, xx, mz, u_, B2, p2, va, C2, Kz, X1, kz, Iz, eR, j4, Pm, Oe, T4, bd, Fi, c_, sR, qs;
 let __tla = (async () => {
   var _a2, _b2;
@@ -14270,7 +14270,7 @@ ${e.stack}` : a;
     },
     test: () => true,
     load: async () => {
-      await Dm(() => import("./browserAll-cCybv7_8.js").then(async (m) => {
+      await Dm(() => import("./browserAll-CBEOPSFf.js").then(async (m) => {
         await m.__tla;
         return m;
       }), __vite__mapDeps([0,1,2,3]));
@@ -14284,7 +14284,7 @@ ${e.stack}` : a;
     },
     test: () => typeof self < "u" && self.WorkerGlobalScope !== void 0,
     load: async () => {
-      await Dm(() => import("./webworkerAll-Cy3672Fb.js").then(async (m) => {
+      await Dm(() => import("./webworkerAll-D5uCjsww.js").then(async (m) => {
         await m.__tla;
         return m;
       }), __vite__mapDeps([1,2,3]));
@@ -19299,7 +19299,7 @@ ${e}`;
       const f = t[c];
       if (f === "webgpu" && await sz()) {
         const { WebGPURenderer: p } = await Dm(async () => {
-          const { WebGPURenderer: m } = await import("./WebGPURenderer-DpdYtPCN.js").then(async (m7) => {
+          const { WebGPURenderer: m } = await import("./WebGPURenderer-CVyceVEK.js").then(async (m7) => {
             await m7.__tla;
             return m7;
           });
@@ -19314,7 +19314,7 @@ ${e}`;
         break;
       } else if (f === "webgl" && iz(e.failIfMajorPerformanceCaveat ?? j2.defaultOptions.failIfMajorPerformanceCaveat)) {
         const { WebGLRenderer: p } = await Dm(async () => {
-          const { WebGLRenderer: m } = await import("./WebGLRenderer-C1BTlQQa.js").then(async (m7) => {
+          const { WebGLRenderer: m } = await import("./WebGLRenderer-zl2_Y8wd.js").then(async (m7) => {
             await m7.__tla;
             return m7;
           });
@@ -30377,7 +30377,7 @@ No matching component was found for:
           });
         }
       }
-      if (m) {
+      if (m && e.get_use_quadtree()) {
         const lt = e.get_quadtree(), ot = (tt) => {
           if (!tt) return;
           const dt = tt.dimensions.x / 2, Mt = tt.dimensions.y / 2, Nt = tt.center.x - dt, At = tt.center.y - Mt;
@@ -31293,7 +31293,7 @@ No matching component was found for:
                   et.jsx("button", {
                     onClick: () => {
                       const pt = !_;
-                      x(pt), console.log(`Quadtree manually ${pt ? "enabled" : "disabled"}`), !pt && e.get_planet_count() >= 150 ? dt.current = true : pt && (dt.current = false), i((jt) => jt + 1);
+                      x(pt), console.log(`Quadtree manually ${pt ? "enabled" : "disabled"}`), pt || A(false), !pt && e.get_planet_count() >= 150 ? dt.current = true : pt && (dt.current = false), i((jt) => jt + 1);
                     },
                     className: `p-1.5 sm:p-2 rounded cursor-pointer transition-all duration-200 ${_ ? "bg-blue-100" : "hover:bg-gray-100"}`,
                     title: _ ? "Quadtree Enabled" : "Quadtree Disabled",

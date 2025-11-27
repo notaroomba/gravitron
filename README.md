@@ -1,73 +1,92 @@
-# React + TypeScript + Vite
+<h1 align="center">
+	<br>
+	<a href="https://gravitron.notaroomba.dev"><img src="public/logo.png" alt="Gravitron" width="200"></a>
+	<br>
+	Gravitron
+	<br>
+</h1>
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<h4 align="center">
+	Interactive N-body gravity simulation with a Rust physics engine compiled to WebAssembly
+</h4>
 
-Currently, two official plugins are available:
+<div align="center">
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)
+![WASM](https://img.shields.io/badge/WebAssembly-%2300969C.svg?style=for-the-badge&logo=webassembly&logoColor=white)
+![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
+![PixiJS](https://img.shields.io/badge/Pixi.js-%23FF66CC.svg?style=for-the-badge)
 
-## React Compiler
+</div>
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+An interactive N-body gravity simulation that combines a high-performance physics engine (written in Rust and compiled to WASM) with a responsive web UI (React + TypeScript), and PixiJS for high-performance 2D canvas rendering.
 
-## Expanding the ESLint configuration
+<p align="center">
+  <a href="https://gravitron.notaroomba.dev">Live demo · gravitron.notaroomba.dev</a>
+</p>
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Key features
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- High-performance physics core implemented in Rust and compiled to WebAssembly for accurate, real-time N-body gravitational simulation
+- Smooth, interactive 2D visualization built with React, PixiJS, and TypeScript
+- Barnes-Hut quadtree optimization for efficient simulation of 500+ bodies
+- Multiple numerical integration methods (Euler, RK4, Verlet, Leapfrog)
+- Adjustable parameters (gravity, mass, speed, quadtree theta) and simulation controls
+- Real-time editing: pause to drag planets, modify properties, and adjust velocities
+- Interactive viewport with pan and zoom controls
+- Visual features: velocity vectors, trails, FPS counter, and quadtree visualization
+- Add/remove planets dynamically with hold-to-add/remove functionality
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Preview
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Open https://gravity.notaroomba.dev in a browser.
+
+## Building
+
+### Prerequisites
+- [Rust](https://www.rust-lang.org/) and [wasm-pack](https://rustwasm.github.io/wasm-pack/)
+- [Bun](https://bun.sh/) or [Node.js](https://nodejs.org/)
+
+### Build the physics engine
+```bash
+npm run build:rust
+# or
+bun run build:rust
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Run the development server
+```bash
+npm run dev
+# or
+bun run dev
 ```
+
+### Build for production
+```bash
+npm run build
+# or
+bun run build
+```
+
+## TODO
+
+- Additional integration methods for improved energy conservation
+- Presets for interesting orbital configurations (binary stars, solar systems, etc.)
+- Export/import simulation states
+- Performance optimizations for 1000+ body simulations
+
+## Credits
+
+- Rust and wasm-bindgen for the physics engine
+- React for the UI, TailwindCSS for the styling, and PixiJS for rendering
+- Barnes-Hut algorithm for quadtree optimization
+- Inspiration from classic N-body simulations and orbital mechanics visualizations
+
+## License
+
+MIT
+
+---
+
+> [notaroomba.dev](https://notaroomba.dev) &nbsp;&middot;&nbsp;
+> GitHub [@NotARoomba](https://github.com/NotARoomba) &nbsp;&middot;&nbsp;

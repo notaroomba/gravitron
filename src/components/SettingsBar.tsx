@@ -354,6 +354,10 @@ export default function SettingsBar() {
                 console.log(
                   `Quadtree manually ${newValue ? "enabled" : "disabled"}`
                 );
+                // Auto-disable view when quadtree is disabled
+                if (!newValue) {
+                  setViewQuadtree(false);
+                }
                 // Track if user manually disabled quadtree when planet count >= 150
                 if (!newValue && universe.get_planet_count() >= 150) {
                   quadtreeManuallyDisabledRef.current = true;

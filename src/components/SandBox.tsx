@@ -140,8 +140,8 @@ export default function SandBox({ universe }: SandBoxProps) {
         }
       }
 
-      // Draw quadtree visualization when enabled
-      if (viewQuadtree) {
+      // Draw quadtree visualization when enabled (only if quadtree is actually being used)
+      if (viewQuadtree && universe.get_use_quadtree()) {
         const quadtreeData = universe.get_quadtree();
 
         const drawQuadNode = (node: any) => {
